@@ -1,0 +1,26 @@
+[2025-04-05T22:44:29.810Z] [ERROR] Database query error (retries left: 2): column "error_message" does not exist
+[2025-04-05T22:44:29.810Z] [ERROR] Database query failed: column "error_message" does not exist
+[2025-04-05T22:44:29.810Z] [ERROR] Error getting task status: column "error_message" does not exist
+[2025-04-05T22:44:29.968Z] [ERROR] Database query error (retries left: 2): column "error_message" does not exist
+[2025-04-05T22:44:29.968Z] [ERROR] Database query failed: column "error_message" does not exist
+[2025-04-05T22:44:29.968Z] [ERROR] Error getting task status: column "error_message" does not exist
+[2025-04-05T22:44:30.110Z] [ERROR] Database query error (retries left: 2): column "error_message" does not exist
+[2025-04-05T22:44:30.111Z] [ERROR] Database query failed: column "error_message" does not exist
+[2025-04-05T22:44:30.111Z] [ERROR] Error getting task status: column "error_message" does not exist
+[2025-04-05T23:14:50.011Z] [ERROR] Error exporting filtered businesses: No businesses found with these filters
+[2025-04-05T23:14:50.011Z] [ERROR] Error exporting data: No businesses found with these filters
+[2025-04-05T23:31:46.936Z] [ERROR] Error creating Excel file: Cannot access 'chunkSize' before initialization
+[2025-04-05T23:31:46.937Z] [ERROR] Error exporting all businesses: Cannot access 'chunkSize' before initialization
+[2025-04-05T23:31:46.939Z] [ERROR] Error exporting data: Cannot access 'chunkSize' before initialization
+[2025-04-06T00:30:35.301Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:30:35.457Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:30:46.663Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:30:46.673Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:42:30.117Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:42:30.131Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:43:18.825Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:43:18.832Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:57:49.745Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:57:49.973Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:57:54.134Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')
+[2025-04-06T00:57:54.143Z] [ERROR] Error getting statistics: Cannot read properties of undefined (reading 'get')

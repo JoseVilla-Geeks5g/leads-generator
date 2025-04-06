@@ -1,26 +1,256 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: #FF7B1C;
+  /* Orange */
+  --primary-light: #FFE4CC;
+  /* Light orange for backgrounds */
+  --primary-dark: #E86A0C;
+  --secondary: #1E88E5;
+  /* Blue */
+  --secondary-light: #E3F2FD;
+  /* Light blue for backgrounds */
+  --secondary-dark: #1976D2;
+  --accent: #F8F9FA;
+  --card-bg: #FFFFFF;
+  --success: #4CAF50;
+  --success-light: #E8F5E9;
+  --error: #F44336;
+  --error-light: #FFEBEE;
+  --warning: #FFC107;
+  --warning-light: #FFF8E1;
+  --border: #E9ECEF;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --rounded-sm: 6px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --transition: all 0.2s ease;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --font-sans: var(--font-inter);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Only apply dark mode when explicitly requested (not by system preference alone) */
+.dark-mode {
+  --background: #121212;
+  --foreground: #FAFAFA;
+  --accent: #1E1E1E;
+  --card-bg: #1E1E1E;
+  --border: #333333;
+}
+
+/* Override dark mode when light mode is specified */
+.light-mode {
+  --background: #ffffff;
+  --foreground: #171717;
+  --accent: #F8F9FA;
+  --card-bg: #FFFFFF;
+  --border: #E9ECEF;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+/* Utility classes */
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.bg-primary-light {
+  background-color: var(--primary-light);
+}
+
+.bg-primary-dark {
+  background-color: var(--primary-dark);
+}
+
+.bg-secondary {
+  background-color: var(--secondary);
+}
+
+.bg-secondary-light {
+  background-color: var(--secondary-light);
+}
+
+.bg-secondary-dark {
+  background-color: var(--secondary-dark);
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+.bg-card {
+  background-color: var(--card-bg);
+}
+
+.bg-success-light {
+  background-color: var(--success-light);
+}
+
+.bg-error-light {
+  background-color: var(--error-light);
+}
+
+.bg-warning-light {
+  background-color: var(--warning-light);
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.text-secondary {
+  color: var(--secondary);
+}
+
+.text-success {
+  color: var (--success);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.text-warning {
+  color: var(--warning);
+}
+
+.border-primary {
+  border-color: var(--primary);
+}
+
+.border-light {
+  border-color: var(--border);
+}
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-md {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.rounded-sm {
+  border-radius: var(--rounded-sm);
+}
+
+.rounded-md {
+  border-radius: var(--rounded-md);
+}
+
+.rounded-lg {
+  border-radius: var(--rounded-lg);
+}
+
+/* Hover states */
+.hover\:bg-primary:hover {
+  background-color: var(--primary);
+}
+
+.hover\:bg-primary-dark:hover {
+  background-color: var(--primary-dark);
+}
+
+.hover\:bg-primary-light:hover {
+  background-color: var(--primary-light);
+}
+
+.hover\:bg-accent:hover {
+  background-color: var(--accent);
+}
+
+.hover\:text-primary:hover {
+  color: var(--primary);
+}
+
+.hover\:shadow-md:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Focus states */
+.focus\:ring-primary:focus {
+  --tw-ring-color: var(--primary);
+  outline: none;
+}
+
+.focus\:border-primary:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+/* Transitions */
+.transition {
+  transition: var(--transition);
+}
+
+/* Button styles */
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: var(--rounded-md);
+  font-weight: 500;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: var(--secondary-dark);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover {
+  background-color: var(--accent);
+}
+
+/* Card styles */
+.card {
+  background-color: var(--card-bg);
+  border-radius: var(--rounded-md);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
 }
