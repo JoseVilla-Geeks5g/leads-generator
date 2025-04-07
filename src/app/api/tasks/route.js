@@ -3,116 +3,152 @@ import scraperService from '@/services/scraperService';
 import db from '@/services/database';
 import logger from '@/services/logger';
 
-// API response cache to reduce database load
-const responseCache = {
+// Cache for task listing to reduce database load
+const cache = {
     tasks: null,
     timestamp: 0,
-    maxAge: 20000 // 20 seconds - increased from 5 seconds
+    maxAge: 5 * 60 * 1000 // 5 minutes
 };
 
-// Get all tasks or task status
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const taskId = searchParams.get('id');
 
-        // Add a force refresh option
-        const forceRefresh = searchParams.get('refresh') === 'true';
-
-        // Initialize database if needed
-        await db.init();
-
-        // If taskId is provided, get specific task status
+        // If task ID provided, get specific task
         if (taskId) {
             const task = await scraperService.getTaskStatus(taskId);
-
-            if (!task) {
-                return NextResponse.json({ error: 'Task not found' }, { status: 404 });
-            }
-
             return NextResponse.json(task);
         }
 
-        // Check cache first for all tasks (unless force refresh requested)
+        // Otherwise, get all tasks with basic caching
         const now = Date.now();
-        if (!forceRefresh && responseCache.tasks && (now - responseCache.timestamp < responseCache.maxAge)) {
-            return NextResponse.json(responseCache.tasks);
+        if (cache.tasks && now - cache.timestamp < cache.maxAge) {
+            return NextResponse.json(cache.tasks);
         }
 
-        // If no taskId, get all tasks - with limiting and optimization
-        // Make sure we only select columns that exist in the table
-        let tasks = await db.getMany(`
-            SELECT 
-                id, 
-                search_term, 
-                status, 
-                created_at, 
-                completed_at, 
-                businesses_found
-            FROM scraping_tasks 
-            ORDER BY 
-                CASE 
-                    WHEN status = 'running' THEN 1
-                    WHEN status = 'pending' THEN 2
-                    WHEN status = 'completed' THEN 3
-                    ELSE 4
-                END,
-                created_at DESC
-            LIMIT 100
-        `);
+        // No cache or expired, fetch from database
+        const tasks = await scraperService.getAllTasks();
 
         // Update cache
-        responseCache.tasks = tasks;
-        responseCache.timestamp = now;
+        cache.tasks = tasks;
+        cache.timestamp = now;
 
-        // Set Cache-Control headers for client caching
-        const headers = new Headers();
-        headers.set('Cache-Control', 'max-age=10');
-
-        return NextResponse.json(tasks, { headers });
+        return NextResponse.json(tasks);
     } catch (error) {
-        logger.error(`Error getting task status: ${error.message}`);
+        logger.error(`Error in GET /api/tasks: ${error.message}`);
         return NextResponse.json(
-            { error: 'Failed to get task status', details: error.message },
+            { error: 'Failed to fetch tasks', details: error.message },
             { status: 500 }
         );
     }
 }
 
-// Create a new task
 export async function POST(request) {
     try {
-        // Initialize database if needed
+        // Initialize database tables first to ensure the params column exists
         await db.init();
 
         const body = await request.json();
-        const { searchTerm, location, radius, limit, includeCategories, excludeCategories } = body;
 
-        if (!searchTerm) {
+        // Extract all needed parameters with updated default limit
+        const {
+            searchTerm,
+            location,
+            radius = 10,
+            limit = 5000, // Increased default limit
+            includeCategories = [],
+            excludeCategories = [],
+            keywords = '',
+            useRandomCategories = false,
+            randomCategoryCount = 5,
+            dataToExtract = []
+        } = body;
+
+        logger.info(`Creating scraper task: ${JSON.stringify({
+            searchTerm,
+            location,
+            useRandomCategories,
+            randomCategoryCount,
+            excludedCount: excludeCategories.length,
+            limit
+        })}`);
+
+        // Set up the scraping parameters
+        const scrapingParams = {
+            searchTerm,
+            location,
+            radius,
+            limit,
+            includeCategories,
+            excludeCategories,
+            keywords,
+            useRandomCategories,
+            randomCategoryCount,
+            dataToExtract
+        };
+
+        // For random category mode, we need to fetch random categories from the database
+        if (useRandomCategories) {
+            try {
+                // Get random categories excluding the ones in excludeCategories
+                const excludeClause = excludeCategories.length > 0
+                    ? `WHERE name NOT IN (${excludeCategories.map((_, i) => `$${i + 1}`).join(',')})`
+                    : '';
+
+                const randomCategoriesQuery = `
+                    SELECT name FROM categories
+                    ${excludeClause}
+                    ORDER BY RANDOM()
+                    LIMIT ${randomCategoryCount}
+                `;
+
+                const randomCategories = await db.getMany(
+                    randomCategoriesQuery,
+                    excludeCategories
+                );
+
+                if (randomCategories.length === 0) {
+                    return NextResponse.json(
+                        { error: 'No categories available after applying exclusions' },
+                        { status: 400 }
+                    );
+                }
+
+                // Use these random categories for scraping
+                scrapingParams.useRandomCategories = false; // Set back to false as we've resolved it
+                scrapingParams.searchTerm = randomCategories[0].name;
+                scrapingParams.includeCategories = randomCategories.map(cat => cat.name);
+
+                logger.info(`Using random categories: ${JSON.stringify(scrapingParams.includeCategories)}`);
+            } catch (error) {
+                logger.error(`Error fetching random categories: ${error.message}`);
+                return NextResponse.json(
+                    { error: 'Failed to select random categories', details: error.message },
+                    { status: 500 }
+                );
+            }
+        } else if (!searchTerm && includeCategories.length === 0) {
             return NextResponse.json(
-                { error: 'Search term is required' },
+                { error: 'SearchTerm or includeCategories is required' },
                 { status: 400 }
             );
         }
 
-        // Construct a more meaningful search term if location is provided
-        const fullSearchTerm = location ? `${searchTerm} in ${location}` : searchTerm;
+        // Add task to scraper service
+        const taskId = await scraperService.addTask(scrapingParams);
 
-        // Add the new task
-        const taskId = await scraperService.addTask(fullSearchTerm);
-
-        // Clear the tasks cache
-        responseCache.tasks = null;
+        // Clear cache since we have a new task
+        cache.tasks = null;
 
         return NextResponse.json({
             taskId,
-            message: 'Task added successfully',
-            status: 'pending'
+            message: 'Task created successfully'
         });
     } catch (error) {
-        logger.error(`Error adding task: ${error.message}`);
+        logger.error(`Error creating scraper task: ${error.message}`);
         return NextResponse.json(
-            { error: 'Failed to add task', details: error.message },
+            { error: 'Failed to create scraper task', details: error.message },
             { status: 500 }
         );
     }

@@ -1,0 +1,31 @@
+{
+  "scraping": {
+    "maxConcurrentTasks": 4,
+    "maxResultsPerSearch": 200,
+    "browserTimeout": 30000,
+    "retryAttempts": 3,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  },
+  "emailFinder": {
+    "maxConcurrentTasks": 4,
+    "searchDepth": 2,
+    "timeout": 30000,
+    "maxRetries": 2,
+    "checkWhois": false
+  },
+  "batch": {
+    "waitBetweenTasks": 10000,
+    "maxResultsPerCity": 100,
+    "autoStartEmailFinder": false
+  },
+  "export": {
+    "defaultFormat": "xlsx",
+    "includeHeaders": true,
+    "dateFormat": "YYYY-MM-DD HH:mm:ss"
+  },
+  "system": {
+    "logLevel": "info",
+    "cleanupOldExports": true,
+    "exportRetentionDays": 30
+  }
+}

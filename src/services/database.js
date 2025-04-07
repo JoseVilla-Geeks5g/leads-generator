@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
-import logger from './logger';
 import dotenv from 'dotenv';
+import logger from './logger';
 
 // Check if we're running on server
 const isServer = typeof window === 'undefined';
@@ -19,228 +19,169 @@ class Database {
     constructor() {
         this.pool = null;
         this.connectionCount = 0;
+        this.lastActivity = Date.now();
+        this.maxConnectionIdleTime = 20 * 60 * 1000; // 20 minutes
+        this.connectionMonitorInterval = null;
     }
 
     getPool() {
         if (!this.pool && isServer) {
-            try {
-                // Log connection details (without password) for debugging
-                logger.debug(`Creating database connection pool to: ${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE} as ${process.env.PGUSER}`);
+            // Configure database connection with proper SSL settings for Render
+            this.pool = new Pool({
+                connectionString: process.env.DATABASE_URL,
+                // Always use SSL for Render databases
+                ssl: {
+                    rejectUnauthorized: false
+                },
+                user: process.env.PGUSER || 'leads_db_rc6a_user',
+                host: process.env.PGHOST || 'dpg-cvo56ap5pdvs739nroe0-a.oregon-postgres.render.com',
+                database: process.env.PGDATABASE || 'leads_db_rc6a',
+                password: process.env.PGPASSWORD || '4kzEQqPy5bLBpA1pNiQVGA7VT5KeOcgT',
+                port: process.env.PGPORT || 5432,
+                max: 10, // Maximum number of clients
+                idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+                connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+                maxUses: 7500, // Close and replace connections after 7500 queries
+            });
 
-                // Verify the password is available
-                if (!process.env.PGPASSWORD) {
-                    logger.error('Database password not found in environment variables');
-                    throw new Error('Database password not found');
-                }
+            // Set up event handlers
+            this.pool.on('error', (err, client) => {
+                logger.error(`Unexpected error on idle client: ${err.message}`);
+            });
 
-                // FIXED: Improved pool configuration for large query support
-                this.pool = new Pool({
-                    user: process.env.PGUSER,
-                    host: process.env.PGHOST,
-                    database: process.env.PGDATABASE,
-                    password: process.env.PGPASSWORD,
-                    port: process.env.PGPORT,
-                    max: 20, // Maximum number of clients
-                    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-                    connectionTimeoutMillis: 30000, // Increased timeout for large queries
-                    statement_timeout: 300000, // 5 minutes for long-running queries
-                    query_timeout: 300000, // 5 minutes query timeout
-                    ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false
-                });
+            // Set up connection monitor
+            this.startConnectionMonitor();
 
-                // Set up error handler for unexpected pool errors
-                this.pool.on('error', (err) => {
-                    logger.error(`Unexpected error on idle client: ${err.message}`);
-                });
-
-                // Log connection stats periodically
-                setInterval(() => {
-                    if (this.pool) {
-                        const idleCount = this.pool.idleCount;
-                        const totalCount = this.pool.totalCount;
-                        const waitingCount = this.pool.waitingCount;
-                        logger.debug(`Database pool: ${idleCount} idle, ${totalCount} total, ${waitingCount} waiting`);
-                    }
-                }, 60000);
-
-                logger.info('Database pool created successfully');
-            } catch (error) {
-                logger.error(`Failed to create database pool: ${error.message}`);
-                throw error;
-            }
+            logger.info('Database pool created with SSL enabled');
         }
         return this.pool;
     }
 
+    startConnectionMonitor() {
+        if (isServer && !this.connectionMonitorInterval) {
+            this.connectionMonitorInterval = setInterval(() => {
+                const now = Date.now();
+                if (now - this.lastActivity > this.maxConnectionIdleTime) {
+                    logger.info('Closing idle database connections');
+                    this.closeConnections();
+                }
+            }, 5 * 60 * 1000); // Check every 5 minutes
+        }
+    }
+
+    closeConnections() {
+        if (this.pool) {
+            this.pool.end();
+            this.pool = null;
+        }
+    }
+
     async init() {
-        // If already initialized or in browser, return immediately
-        if (isInitialized || !isServer) {
+        // Don't initialize on the client side
+        if (!isServer) {
             return;
         }
 
-        // If already initializing, wait for that process to complete
-        if (isInitializing && initPromise) {
+        if (isInitialized) {
+            return;
+        }
+
+        if (isInitializing) {
+            // If initialization is already in progress, wait for it to complete
             return initPromise;
         }
 
-        // Set initializing flag and create a promise for others to await
         isInitializing = true;
-        initPromise = (async () => {
-            try {
-                logger.info('Initializing database...');
+        initPromise = this._init();
 
-                // Test the connection before proceeding
-                const pool = this.getPool();
-                const client = await pool.connect();
-                try {
-                    const res = await client.query('SELECT NOW() as now');
-                    logger.debug(`Database connection successful: ${res.rows[0].now}`);
-                } finally {
-                    client.release();
-                }
+        try {
+            await initPromise;
+            isInitialized = true;
 
-                await this.initializeTables();
-                isInitialized = true;
-                logger.info('Database initialized successfully');
-            } catch (error) {
-                logger.error(`Error initializing database: ${error.message}`);
-                // Reset flags to allow retry
-                isInitializing = false;
-                isInitialized = false;
-                throw error;
-            } finally {
-                isInitializing = false;
-            }
-        })();
+            // Force check and add missing columns
+            await this.ensureRequiredColumns();
+        } finally {
+            isInitializing = false;
+        }
 
         return initPromise;
     }
 
-    async initializeTables() {
+    /**
+     * Ensure all required columns exist in the database
+     */
+    async ensureRequiredColumns() {
         try {
-            const pool = this.getPool();
+            // Check for params column in scraping_tasks
+            const paramsExists = await this.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='scraping_tasks' AND column_name='params'
+                ) as exists
+            `);
 
-            logger.info('Checking database constraints...');
-
-            // Create business_listings table if not exists
-            await pool.query(`
-        CREATE TABLE IF NOT EXISTS business_listings (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          address TEXT,
-          city TEXT,
-          state TEXT,
-          country TEXT,
-          postal_code TEXT,
-          latitude NUMERIC,
-          longitude NUMERIC,
-          phone TEXT,
-          email TEXT,
-          website TEXT,
-          domain TEXT,
-          rating NUMERIC,
-          search_term TEXT NOT NULL,
-          search_date TIMESTAMP,
-          task_id TEXT,
-          batch_id TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP,
-          CONSTRAINT business_unique_name_search UNIQUE(name, search_term)
-        )
-      `);
-
-            // Add indexes if they don't exist
-            await this.createIndexIfNotExists('idx_business_listings_search_term', 'business_listings', 'search_term');
-            await this.createIndexIfNotExists('idx_business_listings_task_id', 'business_listings', 'task_id');
-            await this.createIndexIfNotExists('idx_business_listings_state', 'business_listings', 'state');
-            await this.createIndexIfNotExists('idx_business_listings_city', 'business_listings', 'city');
-            await this.createIndexIfNotExists('idx_business_listings_email_exists', 'business_listings', '(CASE WHEN email IS NOT NULL AND email != \'\' THEN 1 ELSE 0 END)');
-            await this.createIndexIfNotExists('idx_business_listings_website_exists', 'business_listings', '(CASE WHEN website IS NOT NULL AND website != \'\' THEN 1 ELSE 0 END)');
-
-            // Create scraping_tasks table if not exists and ensure error_message column exists
-            await pool.query(`
-        CREATE TABLE IF NOT EXISTS scraping_tasks (
-          id TEXT PRIMARY KEY,
-          search_term TEXT NOT NULL,
-          status TEXT DEFAULT 'pending',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          completed_at TIMESTAMP,
-          businesses_found INTEGER DEFAULT 0,
-          error_message TEXT
-        )
-      `);
-
-            // Check if error_message column exists, if not add it
-            try {
-                const columnCheck = await this.getOne(`
-          SELECT column_name FROM information_schema.columns 
-          WHERE table_name = 'scraping_tasks' AND column_name = 'error_message'
-        `);
-
-                if (!columnCheck) {
-                    logger.info('Adding missing error_message column to scraping_tasks table');
-                    await pool.query(`ALTER TABLE scraping_tasks ADD COLUMN IF NOT EXISTS error_message TEXT`);
-                }
-            } catch (error) {
-                logger.error(`Error checking for error_message column: ${error.message}`);
+            if (!paramsExists || !paramsExists.exists) {
+                logger.info('Adding params column to scraping_tasks table');
+                await this.query(`ALTER TABLE scraping_tasks ADD COLUMN params TEXT`);
             }
 
-            // Create batch operations table
+            // Check for limit column in scraping_tasks (using double quotes to handle reserved keyword)
+            const limitExists = await this.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='scraping_tasks' AND column_name='limit'
+                ) as exists
+            `);
+
+            if (!limitExists || !limitExists.exists) {
+                logger.info('Adding "limit" column to scraping_tasks table');
+                await this.query(`ALTER TABLE scraping_tasks ADD COLUMN "limit" INTEGER DEFAULT 100`);
+            }
+        } catch (error) {
+            logger.error(`Error ensuring required columns: ${error.message}`);
+        }
+    }
+
+    async _init() {
+        try {
+            logger.info('Initializing database...');
+            await this.testConnection();
+            await this.initTables();
+            logger.info('Database initialized successfully');
+        } catch (error) {
+            logger.error(`Failed to initialize database: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async testConnection() {
+        const pool = this.getPool();
+        try {
+            await pool.query('SELECT NOW()');
+            logger.info('Database connection successful');
+            return true;
+        } catch (error) {
+            logger.error(`Database connection error: ${error.message}`);
+            throw error; // Re-throw to be handled by caller
+        }
+    }
+
+    async initTables() {
+        try {
+            const pool = this.getPool();
+            // Initialize tables here if needed
+            // Example:
             await pool.query(`
-        CREATE TABLE IF NOT EXISTS batch_operations (
-          id TEXT PRIMARY KEY,
-          start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          end_time TIMESTAMP,
-          status TEXT DEFAULT 'pending',
-          total_tasks INTEGER DEFAULT 0,
-          completed_tasks INTEGER DEFAULT 0,
-          failed_tasks INTEGER DEFAULT 0,
-          states JSONB
-        )
-      `);
+                CREATE TABLE IF NOT EXISTS categories (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE NOT NULL,
+                    description TEXT,
+                    usage_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            `);
 
-            // Create batch task failures table
-            await pool.query(`
-        CREATE TABLE IF NOT EXISTS batch_task_failures (
-          id SERIAL PRIMARY KEY,
-          batch_id TEXT NOT NULL,
-          state TEXT NOT NULL,
-          error_message TEXT,
-          failure_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-            // Create batch state progress table
-            await pool.query(`
-        CREATE TABLE IF NOT EXISTS batch_state_progress (
-          id SERIAL PRIMARY KEY,
-          batch_id TEXT NOT NULL,
-          state TEXT NOT NULL,
-          status TEXT DEFAULT 'pending',
-          businesses_found INTEGER DEFAULT 0,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-            // Create categories table if not exists
-            await pool.query(`
-        CREATE TABLE IF NOT EXISTS categories (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL UNIQUE,
-          description TEXT,
-          parent_category TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          usage_count INTEGER DEFAULT 0
-        )
-      `);
-
-            // Create index for faster category search
-            await this.createIndexIfNotExists('idx_categories_name', 'categories', 'name');
-
-            // Create index for case-insensitive search
-            await this.createIndexIfNotExists('idx_categories_name_lower', 'categories', 'LOWER(name)');
-
-            logger.info('Database tables initialized successfully with performance optimizations');
+            // Initialize other tables as needed
 
         } catch (error) {
             logger.error(`Error initializing tables: ${error.message}`);
@@ -248,199 +189,56 @@ class Database {
         }
     }
 
-    // Helper to create an index only if it doesn't exist
-    async createIndexIfNotExists(indexName, tableName, columnExpression) {
+    async query(text, params, retries = 3) {
+        this.lastActivity = Date.now();
+        const pool = this.getPool();
+
         try {
-            // Check if index already exists
-            const indexExists = await this.getOne(`
-        SELECT 1 FROM pg_indexes 
-        WHERE indexname = $1
-      `, [indexName]);
-
-            if (!indexExists) {
-                await this.pool.query(`CREATE INDEX ${indexName} ON ${tableName}(${columnExpression})`);
-                logger.debug(`Created index ${indexName} on ${tableName}`);
-            }
+            const result = await pool.query(text, params);
+            return result;
         } catch (error) {
-            logger.error(`Error creating index ${indexName}: ${error.message}`);
-        }
-    }
-
-    // Run a query with retry logic and proper connection handling
-    async query(text, params = []) {
-        if (!isServer) {
-            logger.error('Database operations can only be performed on the server');
-            throw new Error('Database operations can only be performed on the server');
-        }
-
-        let client;
-        try {
-            client = await this.getPool().connect();
-            this.connectionCount++;
-
-            let retries = 3;
-            let lastError;
-
-            // FIXED: Better handling for export queries
-            const isExportQuery = text.toLowerCase().includes('select * from business_listings');
-            if (isExportQuery) {
-                logger.info('Setting longer timeout for export query');
-                await client.query('SET statement_timeout = 300000'); // 5 minutes for export queries
-
-                // For specific filter cases that might be problematic
-                if (text.includes('email IS NOT NULL') || text.includes('website IS NOT NULL')) {
-                    logger.info('Detected potentially expensive filter, optimizing query plan');
-                    // Use indexes more effectively
-                    await client.query('SET enable_seqscan = OFF');
-                    await client.query('SET random_page_cost = 1.1');
-                }
+            // If we get a connection error and have retries left, retry
+            if (retries > 0 && (
+                error.code === 'ECONNREFUSED' ||
+                error.code === 'ETIMEDOUT' ||
+                error.message.includes('connect ETIMEDOUT') ||
+                error.message.includes('Connection terminated') ||
+                error.message.includes('Connection reset by peer')
+            )) {
+                logger.error(`Database query error (retries left: ${retries}): ${error.message}`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return this.query(text, params, retries - 1);
             }
 
-            while (retries > 0) {
-                try {
-                    const result = await client.query(text, params);
-
-                    // FIXED: Add validation for export queries to detect empty results
-                    if (isExportQuery && result.rows.length === 0) {
-                        logger.warn('Export query returned zero rows - this could indicate a filter issue');
-                        // Log the exact query for debugging
-                        logger.info(`Query returning zero rows: ${text}`);
-                        logger.info(`Parameters: ${JSON.stringify(params)}`);
-                    }
-
-                    return result;
-                } catch (error) {
-                    lastError = error;
-                    logger.error(`Database query error (retries left: ${retries - 1}): ${error.message}`);
-
-                    // Only retry on connection errors
-                    if (error.code === '08006' || error.code === '08001' || error.code === '57P01') {
-                        retries--;
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    } else {
-                        throw error;
-                    }
-                }
-            }
-            throw lastError;
-        } catch (error) {
-            logger.error(`Database query failed: ${error.message}`);
-            throw error;
-        } finally {
-            if (client) {
-                // Reset any session parameters we changed
-                try {
-                    await client.query('RESET ALL');
-                } catch (e) {
-                    // Ignore reset errors
-                }
-                client.release();
-                this.connectionCount--;
-            }
-        }
-    }
-
-    // FIXED: New optimized method for large result sets
-    async queryStream(text, params = [], rowCallback) {
-        if (!isServer) {
-            throw new Error('Database operations can only be performed on the server');
-        }
-
-        let client;
-        try {
-            client = await this.getPool().connect();
-            this.connectionCount++;
-
-            // Set a longer timeout for large streaming queries
-            await client.query('SET statement_timeout = 600000'); // 10 minutes
-
-            const query = new QueryStream(text, params);
-            const stream = client.query(query);
-
-            let count = 0;
-
-            stream.on('data', row => {
-                count++;
-                rowCallback(row);
-
-                // Log progress periodically
-                if (count % 1000 === 0) {
-                    logger.debug(`Processed ${count} rows from stream`);
-                }
-            });
-
-            return new Promise((resolve, reject) => {
-                stream.on('end', () => {
-                    logger.debug(`Stream completed, processed ${count} total rows`);
-                    resolve(count);
-                });
-
-                stream.on('error', err => {
-                    logger.error(`Stream error: ${err.message}`);
-                    reject(err);
-                });
-            }).finally(() => {
-                client.release();
-                this.connectionCount--;
-            });
-        } catch (error) {
-            if (client) {
-                client.release();
-                this.connectionCount--;
-            }
-            logger.error(`Database queryStream failed: ${error.message}`);
+            logger.error(`Database query error: ${error.message}`);
             throw error;
         }
     }
 
-    // Get a single result from a query
-    async getOne(text, params = []) {
+    async getOne(text, params) {
         const result = await this.query(text, params);
         return result.rows[0];
     }
 
-    // Get multiple results from a query
-    async getMany(text, params = []) {
+    async getMany(text, params) {
         const result = await this.query(text, params);
-
-        // FIXED: Add safety check and logging for large result sets
-        if (result.rows.length > 5000) {
-            logger.warn(`Large result set returned: ${result.rows.length} rows. Consider using pagination.`);
-        }
-
         return result.rows;
     }
 
-    // Get count directly with optimization for COUNT queries
     async getCount(table, whereClause = '', params = []) {
-        const query = `SELECT COUNT(*) as count FROM ${table}${whereClause ? ` WHERE ${whereClause}` : ''}`;
-        const result = await this.getOne(query, params);
-        return result?.count || 0;
-    }
-
-    // Test the database connection
-    async testConnection() {
         try {
-            const pool = this.getPool();
-            const client = await pool.connect();
-            try {
-                const result = await client.query('SELECT 1 as connection_test');
-                return result.rows[0].connection_test === 1;
-            } finally {
-                client.release();
-            }
-        } catch (error) {
-            logger.error(`Database connection test failed: ${error.message}`);
-            return false;
-        }
-    }
+            // Build a proper count query
+            const countQuery = `
+                SELECT COUNT(*) as count 
+                FROM ${table}
+                ${whereClause ? `WHERE ${whereClause}` : ''}
+            `;
 
-    // Close the pool when the application shuts down
-    async end() {
-        if (this.pool) {
-            logger.info('Closing database connection pool');
-            await this.pool.end();
-            this.pool = null;
+            const result = await this.query(countQuery, params);
+            return parseInt(result.rows[0]?.count || '0');
+        } catch (error) {
+            logger.error(`Error getting count: ${error.message}`);
+            return 0;
         }
     }
 }

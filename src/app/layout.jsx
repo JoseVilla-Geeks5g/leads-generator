@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-    title: 'Lead Generator Dashboard',
-    description: 'Extract business data and contact information from Google Maps',
+    title: 'Lead Generator',
+    description: 'Scrape Google Maps for business leads',
 };
 
 export default function RootLayout({ children }) {
@@ -22,6 +22,8 @@ export default function RootLayout({ children }) {
         >
             <head>
                 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+                <link rel="icon" href="/favicon.ico" sizes="any" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             </head>
             <body className={inter.className}>{children}</body>
         </html>

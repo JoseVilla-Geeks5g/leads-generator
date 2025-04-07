@@ -2,6 +2,39 @@ import { v4 as uuidv4 } from 'uuid';
 import db from './database';
 import logger from './logger';
 
+// Make sure emailFinder is properly imported at the top of the file
+const emailFinder = require('../../emailFinder');
+
+// Add a helper function to check if emailFinder is working properly
+function verifyEmailFinder() {
+    if (!emailFinder) {
+        logger.error('Email finder module is not properly imported');
+        return false;
+    }
+
+    if (typeof emailFinder.findEmail !== 'function') {
+        logger.error('findEmail method is missing from the email finder module');
+        return false;
+    }
+
+    return true;
+}
+
+// Add this to any method that uses emailFinder.findEmail
+async function findEmailSafe(website, options = {}) {
+    if (!verifyEmailFinder()) {
+        logger.error(`Cannot find email for ${website}: Email finder not properly initialized`);
+        return null;
+    }
+
+    try {
+        return await emailFinder.findEmail(website, options);
+    } catch (error) {
+        logger.error(`Error finding email using emailFinder: ${error.message}`);
+        return null;
+    }
+}
+
 /**
  * Scraper service for lead generation
  * - Handles scraping tasks
@@ -28,9 +61,76 @@ class ScraperService {
         this.currentRunningTasks = 0;
         this.taskQueue = [];
 
-        // Set up periodic task processing
+        // IMPORTANT: Auto-processing tasks is now disabled by default
+        this.autoProcessEnabled = false;
+        this.taskProcessingInterval = null;
+
+        // IMPORTANT: Disable mock data generation by default
+        this.generateMockData = false;
+    }
+
+    /**
+     * Enable or disable automatic task processing
+     * @param {boolean} enabled - Whether auto-processing should be enabled
+     * @param {boolean} requireAuth - Whether authorization is required
+     * @returns {boolean} - New status
+     */
+    setAutoProcessing(enabled, requireAuth = false) {
         if (typeof window === 'undefined') {
-            setInterval(() => this.processTaskQueue(), 5000);
+            // Clear any existing interval
+            if (this.taskProcessingInterval) {
+                clearInterval(this.taskProcessingInterval);
+                this.taskProcessingInterval = null;
+            }
+
+            // Set the new status
+            this.autoProcessEnabled = enabled;
+
+            // If enabled, start the interval
+            if (enabled) {
+                logger.info('Enabling automatic task processing');
+                this.taskProcessingInterval = setInterval(() => this.processTaskQueue(), 5000);
+            } else {
+                logger.info('Automatic task processing disabled');
+            }
+        }
+        return this.autoProcessEnabled;
+    }
+
+    /**
+     * Check if auto-processing is enabled
+     * @returns {boolean} - Current status
+     */
+    isAutoProcessingEnabled() {
+        return this.autoProcessEnabled;
+    }
+
+    /**
+     * Enable or disable mock data generation
+     * @param {boolean} enabled - Whether to generate mock data
+     * @returns {boolean} - New status
+     */
+    setMockDataGeneration(enabled) {
+        this.generateMockData = enabled;
+        logger.info(`Mock data generation ${enabled ? 'enabled' : 'disabled'}`);
+        return this.generateMockData;
+    }
+
+    /**
+     * Check if mock data generation is enabled
+     * @returns {boolean} - Current status
+     */
+    isMockDataGenerationEnabled() {
+        return this.generateMockData;
+    }
+
+    /**
+     * Manually trigger task queue processing once
+     */
+    async triggerTaskProcessing() {
+        if (typeof window === 'undefined') {
+            logger.info('Manually triggering task processing');
+            await this.processTaskQueue();
         }
     }
 
@@ -64,6 +164,7 @@ class ScraperService {
      * Process next tasks in queue
      */
     async processTaskQueue() {
+        // Only process if auto-processing is enabled or if called manually
         try {
             // Skip if we're at capacity
             if (this.currentRunningTasks >= this.maxConcurrentTasks) {
@@ -71,28 +172,62 @@ class ScraperService {
             }
 
             // Get pending tasks from database
-            const pendingTasks = await db.getMany(`
-                SELECT id, search_term FROM scraping_tasks
-                WHERE status = 'pending'
-                ORDER BY created_at ASC
-                LIMIT $1
-            `, [this.maxConcurrentTasks - this.currentRunningTasks]);
+            try {
+                // Make sure database is initialized first
+                await db.init();
 
-            // Process each pending task
-            for (const task of pendingTasks) {
-                this.currentRunningTasks++;
+                // First, ensure required columns exist
+                await this.ensureRequiredColumns();
 
-                // Start task in background
-                this.runTask(task.id, task.search_term)
-                    .catch(error => {
-                        logger.error(`Error running task ${task.id}: ${error.message}`);
-                    })
-                    .finally(() => {
-                        this.currentRunningTasks--;
-                    });
+                // Use a safer query that checks if columns exist and provides defaults
+                const pendingTasks = await db.getMany(`
+                    SELECT 
+                        id, 
+                        search_term,
+                        NULL as params,
+                        COALESCE("limit", 100) as "limit",
+                        COALESCE(keywords, '') as keywords,
+                        COALESCE(location, '') as location
+                    FROM scraping_tasks
+                    WHERE status = 'pending'
+                    ORDER BY created_at ASC
+                    LIMIT $1
+                `, [this.maxConcurrentTasks - this.currentRunningTasks]);
 
-                // Add small delay between starting tasks
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Process each pending task
+                for (const task of pendingTasks) {
+                    this.currentRunningTasks++;
+
+                    // Start with a basic params object using default values
+                    let params = {
+                        limit: task.limit || 100,
+                        keywords: task.keywords || '',
+                        location: task.location || '',
+                    };
+
+                    // Start task in background
+                    this.runTask(task.id, task.search_term, params)
+                        .catch(error => {
+                            logger.error(`Error running task ${task.id}: ${error.message}`);
+                        })
+                        .finally(() => {
+                            this.currentRunningTasks--;
+                        });
+
+                    // Add small delay between starting tasks
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            } catch (error) {
+                // Special handling for database connection issues
+                if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+                    logger.error(`Database connection error in task queue: ${error.message}`);
+                    // Wait longer before retrying on connection issues
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                } else {
+                    logger.error(`Error processing task queue: ${error.message}`);
+                    // For other errors, wait a shorter time
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
             }
         } catch (error) {
             logger.error(`Error processing task queue: ${error.message}`);
@@ -100,38 +235,157 @@ class ScraperService {
     }
 
     /**
-     * Add a scraping task
-     * @param {string} searchTerm - The search term to scrape
+     * Ensure all required columns exist in the database
+     */
+    async ensureRequiredColumns() {
+        try {
+            // Check for location column in scraping_tasks
+            const locationExists = await db.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='scraping_tasks' AND column_name='location'
+                ) as exists
+            `);
+
+            if (!locationExists || !locationExists.exists) {
+                logger.info('Adding location column to scraping_tasks table');
+                await db.query(`ALTER TABLE scraping_tasks ADD COLUMN location VARCHAR(255)`);
+            }
+
+            // Check for params column
+            await this.ensureParamsColumn();
+
+            // Check for limit column with proper quoting
+            const limitExists = await db.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='scraping_tasks' AND column_name='limit'
+                ) as exists
+            `);
+
+            if (!limitExists || !limitExists.exists) {
+                logger.info('Adding limit column to scraping_tasks table');
+                await db.query(`ALTER TABLE scraping_tasks ADD COLUMN "limit" INTEGER DEFAULT 100`);
+            }
+
+            // Check for keywords column
+            const keywordsExists = await db.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='scraping_tasks' AND column_name='keywords'
+                ) as exists
+            `);
+
+            if (!keywordsExists || !keywordsExists.exists) {
+                logger.info('Adding keywords column to scraping_tasks table');
+                await db.query(`ALTER TABLE scraping_tasks ADD COLUMN keywords TEXT`);
+            }
+        } catch (error) {
+            logger.error(`Error ensuring required columns: ${error.message}`);
+        }
+    }
+
+    /**
+     * Ensure params column exists in the scraping_tasks table
+     */
+    async ensureParamsColumn() {
+        try {
+            // Check if column exists
+            const columnExists = await db.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='scraping_tasks' AND column_name='params'
+                ) as exists
+            `);
+
+            if (!columnExists || !columnExists.exists) {
+                logger.info('Adding params column to scraping_tasks table');
+                await db.query(`ALTER TABLE scraping_tasks ADD COLUMN params TEXT`);
+            }
+        } catch (error) {
+            logger.error(`Error ensuring params column: ${error.message}`);
+        }
+    }
+
+    /**
+     * Add a scraping task with enhanced parameters
+     * @param {Object} params - The scraping parameters
      * @returns {string} The task ID
      */
-    async addTask(searchTerm) {
+    async addTask(params) {
         try {
             await this.ensureBrowser();
             await db.init();
 
+            // Ensure all required columns exist
+            await this.ensureRequiredColumns();
+
             // Create task ID
             const taskId = uuidv4();
 
-            // Create task entry in database
-            await db.query(`
-                INSERT INTO scraping_tasks (id, search_term, status, created_at)
-                VALUES ($1, $2, $3, NOW())
-            `, [taskId, searchTerm, 'pending']);
+            // Use first category if no search term
+            const searchTerm = params.searchTerm ||
+                (params.includeCategories && params.includeCategories.length > 0 ?
+                    params.includeCategories[0] : 'business');
 
-            // Add to tasks map for tracking
-            this.tasks.set(taskId, {
-                id: taskId,
-                searchTerm,
-                status: 'pending',
-                progress: 0,
-                businessesFound: 0,
-                startTime: new Date(),
-            });
+            // Store all parameters as JSON for more flexibility
+            const serializedParams = JSON.stringify(params);
 
-            // Process queue immediately for faster startup
-            setTimeout(() => this.processTaskQueue(), 100);
+            try {
+                // Create a simple insert with only required columns
+                await db.query(`
+                    INSERT INTO scraping_tasks 
+                    (id, search_term, status, created_at, params, location, "limit", keywords)
+                    VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7)
+                `, [
+                    taskId,
+                    searchTerm,
+                    'pending',
+                    serializedParams,
+                    params.location || '',
+                    params.limit || 100,
+                    params.keywords || ''
+                ]);
 
-            return taskId;
+                // Add to tasks map for tracking
+                this.tasks.set(taskId, {
+                    id: taskId,
+                    searchTerm,
+                    status: 'pending',
+                    progress: 0,
+                    businessesFound: 0,
+                    startTime: new Date(),
+                    params
+                });
+
+                // Process queue immediately for faster startup
+                setTimeout(() => this.processTaskQueue(), 100);
+
+                return taskId;
+            } catch (dbError) {
+                logger.error(`Database error in addTask: ${dbError.message}`);
+
+                // Fallback to simple insert if all else fails
+                await db.query(`
+                    INSERT INTO scraping_tasks 
+                    (id, search_term, status, created_at)
+                    VALUES ($1, $2, $3, NOW())
+                `, [taskId, searchTerm, 'pending']);
+
+                // Still add to tasks map
+                this.tasks.set(taskId, {
+                    id: taskId,
+                    searchTerm,
+                    status: 'pending',
+                    progress: 0,
+                    businessesFound: 0,
+                    startTime: new Date(),
+                    params
+                });
+
+                setTimeout(() => this.processTaskQueue(), 100);
+                return taskId;
+            }
         } catch (error) {
             logger.error(`Error adding task: ${error.message}`);
             throw error;
@@ -142,45 +396,186 @@ class ScraperService {
      * Run a scraping task in the background
      * @param {string} taskId - The task ID
      * @param {string} searchTerm - The search term to scrape
+     * @param {Object} params - Additional parameters
      */
-    async runTask(taskId, searchTerm) {
+    async runTask(taskId, searchTerm, params = {}) {
         try {
             // Update task status
             await this.updateTaskStatus(taskId, 'running');
 
-            // Extract location info from search term if available
-            let location = '';
-            const locationMatch = searchTerm.match(/in\s+([^,]+(?:,\s*\w+)?)/i);
-            if (locationMatch) {
-                location = locationMatch[1];
-            }
+            // Extract location info
+            const location = params.location || '';
+            const includeCategories = params.includeCategories || [];
+            const excludeCategories = params.excludeCategories || [];
+            // Use the limit value from params, with quotes around the column name in logs
+            const limit = params["limit"] || 100;
+            const keywords = params.keywords || '';
 
-            logger.info(`Task ${taskId} running for "${searchTerm}"`);
+            logger.info(`Task ${taskId} running for "${searchTerm}" in ${location}`);
+            logger.info(`Task parameters: limit=${limit}, includeCategories=${includeCategories.length}, excludeCategories=${excludeCategories.length}`);
 
             // In a real implementation, this would use Playwright to scrape Google Maps
             // For now, we'll just simulate the task running
 
+            // If multiple categories specified, we need to process each one
+            const categoriesToProcess = [searchTerm, ...includeCategories.filter(c => c !== searchTerm)];
+            const uniqueCategories = [...new Set(categoriesToProcess)];
+
+            logger.info(`Processing ${uniqueCategories.length} categories for task ${taskId}`);
+
             // Simulate progressive updates
-            const totalSteps = 4;
-            for (let i = 1; i <= totalSteps; i++) {
-                await new Promise(resolve => setTimeout(resolve, 1500));
+            const totalBusinesses = Math.floor(Math.random() * limit * uniqueCategories.length);
+            const stepSize = Math.max(1, Math.floor(totalBusinesses / 10));
+            let foundBusinesses = 0;
 
-                // Update progress
-                const task = this.tasks.get(taskId);
-                if (task) {
-                    task.progress = Math.floor((i / totalSteps) * 100);
+            for (const category of uniqueCategories) {
+                logger.info(`Processing category "${category}" for task ${taskId}`);
+
+                // Simulate finding businesses for this category
+                const categoryBusinesses = Math.min(
+                    limit,
+                    Math.floor(Math.random() * limit)
+                );
+
+                // IMPORTANT: Only create simulated businesses if mock data generation is enabled
+                if (this.generateMockData) {
+                    // Simulate progressive scraping of businesses
+                    for (let i = 0; i < categoryBusinesses; i += stepSize) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+
+                        const batchSize = Math.min(stepSize, categoryBusinesses - i);
+                        foundBusinesses += batchSize;
+
+                        // Update progress
+                        const task = this.tasks.get(taskId);
+                        if (task) {
+                            task.progress = Math.min(100, Math.floor((foundBusinesses / totalBusinesses) * 100));
+                            task.businessesFound = foundBusinesses;
+                        }
+
+                        // Create simulated business entries
+                        await this.createSimulatedBusinesses(taskId, category, location, batchSize);
+
+                        logger.info(`Task ${taskId} progress: ${task?.progress || 0}%, found ${foundBusinesses} businesses so far`);
+                    }
+                } else {
+                    // Don't create mock data, just log progress
+                    logger.info(`Task ${taskId} completed without generating mock data (disabled)`);
+
+                    // Simulate a short delay
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
-
-                logger.info(`Task ${taskId} progress: ${Math.floor((i / totalSteps) * 100)}%`);
             }
 
-            // Mark task as completed with 0 businesses (real scraper would provide actual data)
-            await this.updateTaskStatus(taskId, 'completed', 0);
+            // Mark task as completed
+            await this.updateTaskStatus(taskId, 'completed', foundBusinesses);
 
-            logger.info(`Task ${taskId} completed - awaiting real scraper to provide data`);
+            logger.info(`Task ${taskId} completed with ${foundBusinesses} businesses found`);
         } catch (error) {
             logger.error(`Error running task ${taskId}: ${error.message}`);
             await this.updateTaskStatus(taskId, 'failed');
+        }
+    }
+
+    /**
+     * Create simulated business entries in the database for testing
+     * @param {string} taskId - Task ID
+     * @param {string} category - Business category
+     * @param {string} location - Location string
+     * @param {number} count - Number of businesses to create
+     */
+    async createSimulatedBusinesses(taskId, category, location, count) {
+        try {
+            // Parse location for state/city
+            let state = '';
+            let city = '';
+
+            if (location.includes(',')) {
+                const parts = location.split(',').map(p => p.trim());
+                city = parts[0];
+                state = parts[1];
+            } else {
+                state = location;
+            }
+
+            const businessTypes = [
+                'LLC', 'Corporation', 'Partnership', 'Sole Proprietorship'
+            ];
+
+            // Create a batch of businesses
+            for (let i = 0; i < count; i++) {
+                const name = `${category} Business ${Math.floor(Math.random() * 10000)}`;
+                const hasEmail = Math.random() > 0.3;
+                const hasWebsite = Math.random() > 0.2;
+
+                // Generate random data
+                const data = {
+                    name,
+                    address: `${1000 + Math.floor(Math.random() * 9000)} Main St`,
+                    city: city || `${state} City`,
+                    state,
+                    country: 'United States',
+                    postal_code: `${10000 + Math.floor(Math.random() * 90000)}`,
+                    phone: `(${100 + Math.floor(Math.random() * 900)}) ${100 + Math.floor(Math.random() * 900)}-${1000 + Math.floor(Math.random() * 9000)}`,
+                    email: hasEmail ? `contact@${name.toLowerCase().replace(/\s+/g, '-')}.com` : null,
+                    website: hasWebsite ? `https://www.${name.toLowerCase().replace(/\s+/g, '-')}.com` : null,
+                    domain: hasWebsite ? `${name.toLowerCase().replace(/\s+/g, '-')}.com` : null,
+                    rating: (3 + Math.random() * 2).toFixed(1),
+                    search_term: category,
+                    search_date: new Date().toISOString(),
+                    task_id: taskId,
+                    business_type: businessTypes[Math.floor(Math.random() * businessTypes.length)],
+                    owner_name: null,
+                    verified: false,
+                    contacted: false,
+                    notes: null,
+                    created_at: new Date().toISOString()
+                };
+
+                // Insert into database
+                await db.query(`
+                    INSERT INTO business_listings (
+                        name, address, city, state, country, postal_code, phone, email, website, domain, 
+                        rating, search_term, search_date, task_id, business_type, owner_name, verified, 
+                        contacted, notes, created_at
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+                    )
+                    ON CONFLICT (name, search_term) DO NOTHING
+                `, [
+                    data.name, data.address, data.city, data.state, data.country, data.postal_code,
+                    data.phone, data.email, data.website, data.domain, data.rating, data.search_term,
+                    data.search_date, data.task_id, data.business_type, data.owner_name, data.verified,
+                    data.contacted, data.notes, data.created_at
+                ]);
+            }
+        } catch (error) {
+            logger.error(`Error creating simulated businesses: ${error.message}`);
+        }
+    }
+
+    /**
+     * Remove all mock business entries from the database
+     * @returns {Promise<number>} Number of entries removed
+     */
+    async clearMockBusinesses() {
+        try {
+            logger.info('Removing mock business entries from database');
+
+            // This query will delete all businesses with names matching the mock pattern
+            const result = await db.query(`
+                DELETE FROM business_listings 
+                WHERE name LIKE '%Business %'
+                RETURNING id
+            `);
+
+            const count = result.rowCount;
+            logger.info(`Removed ${count} mock business entries`);
+
+            return count;
+        } catch (error) {
+            logger.error(`Error clearing mock businesses: ${error.message}`);
+            throw error;
         }
     }
 
@@ -270,7 +665,24 @@ class ScraperService {
      * @returns {Object} Status object
      */
     getEmailFinderStatus() {
-        return this.emailFinderStatus;
+        // Ensure we have a real-time status check that includes startTime
+        const currentTime = Date.now();
+
+        // If we don't have a startTime but the process is running, add it
+        if (this.emailFinderStatus.isRunning && !this.emailFinderStatus.startTime) {
+            this.emailFinderStatus.startTime = currentTime;
+        }
+
+        // Calculate elapsed time if process is running
+        if (this.emailFinderStatus.isRunning && this.emailFinderStatus.startTime) {
+            this.emailFinderStatus.elapsedTimeMs = currentTime - this.emailFinderStatus.startTime;
+            this.emailFinderStatus.elapsedTime = Math.floor(this.emailFinderStatus.elapsedTimeMs / 1000);
+        }
+
+        return {
+            ...this.emailFinderStatus,
+            lastChecked: currentTime
+        };
     }
 
     /**
@@ -292,16 +704,30 @@ class ScraperService {
                 runningTasks: 0
             };
 
-            // Query businesses without emails
-            const query = `
+            // Build query based on options
+            let query = `
                 SELECT id, name, website, domain
                 FROM business_listings
-                WHERE website IS NOT NULL AND website != '' 
-                AND (email IS NULL OR email = '')
-                LIMIT $1
+                WHERE (email IS NULL OR email = '')
             `;
 
-            const businesses = await db.getMany(query, [options.limit || 100]);
+            const queryParams = [];
+            let paramIndex = 1;
+
+            if (options.onlyWithWebsite) {
+                query += ` AND website IS NOT NULL AND website != '' `;
+            }
+
+            if (options.skipContacted) {
+                query += ` AND (contacted IS NULL OR contacted = FALSE) `;
+            }
+
+            // Add limit
+            query += ` LIMIT $${paramIndex}`;
+            queryParams.push(options.limit || 100);
+
+            // Query businesses without emails
+            const businesses = await db.getMany(query, queryParams);
 
             if (businesses.length === 0) {
                 this.emailFinderStatus.isRunning = false;
@@ -389,51 +815,162 @@ class ScraperService {
         try {
             await this.ensureBrowser();
 
-            // Process businesses one by one
-            // In a real implementation, this would be done in parallel with configurable concurrency
-            for (const business of businesses) {
-                if (!this.emailFinderStatus.isRunning) {
-                    break;
+            // Initialize email finder module
+            await emailFinder.initialize(); // If it has an initialization function
+
+            // Reset status with proper start time tracking
+            const startTime = Date.now();
+            this.emailFinderStatus = {
+                isRunning: true,
+                processed: 0,
+                emailsFound: 0,
+                queueLength: businesses.length,
+                runningTasks: 0,
+                startTime: startTime // Add start time for duration calculations
+            };
+
+            // Process businesses one by one with concurrency management
+            const concurrency = 3; // Process up to 3 sites at once
+            let running = 0;
+            let index = 0;
+
+            logger.info(`Starting email finder for ${businesses.length} businesses with concurrency ${concurrency}`);
+
+            while (index < businesses.length && this.emailFinderStatus.isRunning) {
+                // Process up to concurrency limit
+                while (running < concurrency && index < businesses.length && this.emailFinderStatus.isRunning) {
+                    const business = businesses[index];
+                    index++;
+                    running++;
+
+                    this.emailFinderStatus.runningTasks = running;
+
+                    // Process this business in the background
+                    this.processSingleBusinessEmail(business)
+                        .catch(err => logger.error(`Error processing business email: ${err.message}`))
+                        .finally(() => {
+                            running--;
+                            this.emailFinderStatus.runningTasks = running;
+                        });
+
+                    // Small delay between starting each task to prevent overwhelming the system
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                this.emailFinderStatus.runningTasks = 1;
-
-                try {
-                    // Simulate email discovery process
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-
-                    // Simulate finding an email (70% chance)
-                    const foundEmail = Math.random() > 0.3;
-
-                    if (foundEmail) {
-                        const domain = business.domain ||
-                            (business.website ? new URL(business.website).hostname.replace(/^www\./, '') : '');
-
-                        const email = `contact@${domain}`;
-
-                        // Update the business with the found email
-                        await db.query(`
-                            UPDATE business_listings
-                            SET email = $1, updated_at = NOW()
-                            WHERE id = $2
-                        `, [email, business.id]);
-
-                        this.emailFinderStatus.emailsFound++;
-                    }
-
-                    this.emailFinderStatus.processed++;
-                    this.emailFinderStatus.queueLength--;
-                } catch (err) {
-                    logger.error(`Error processing email for business ${business.id}: ${err.message}`);
-                }
+                // Wait a bit before checking again
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            logger.info(`Email finder completed. Processed ${this.emailFinderStatus.processed} businesses, found ${this.emailFinderStatus.emailsFound} emails.`);
-        } catch (error) {
-            logger.error(`Error in email processing: ${error.message}`);
-        } finally {
+            // Wait for all tasks to complete
+            while (running > 0 && this.emailFinderStatus.isRunning) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            const duration = (Date.now() - this.emailFinderStatus.startTime) / 1000;
+            logger.info(`Email finder completed. Processed ${this.emailFinderStatus.processed} businesses in ${duration.toFixed(1)}s, found ${this.emailFinderStatus.emailsFound} emails.`);
+
+            // Clean up properly
+            try {
+                if (emailFinder && typeof emailFinder.cleanup === 'function') {
+                    await emailFinder.cleanup();
+                } else if (emailFinder && typeof emailFinder.close === 'function') {
+                    // Fallback to close if cleanup doesn't exist
+                    await emailFinder.close();
+                }
+            } catch (err) {
+                logger.error(`Error during email finder cleanup: ${err.message}`);
+            }
+
             this.emailFinderStatus.isRunning = false;
             this.emailFinderStatus.runningTasks = 0;
+        } catch (error) {
+            logger.error(`Error in email processing: ${error.message}`);
+            this.emailFinderStatus.isRunning = false;
+            this.emailFinderStatus.runningTasks = 0;
+        }
+    }
+
+    /**
+     * Process a single business for email discovery
+     * @param {Object} business - The business to process
+     */
+    async processSingleBusinessEmail(business) {
+        try {
+            // Check if business has valid data
+            if (!business || !business.website) {
+                logger.info(`Skipping business ${business?.id || 'unknown'}: No website available`);
+                this.emailFinderStatus.processed++;
+                return;
+            }
+
+            logger.info(`Processing email for business ${business.id}: ${business.name} (${business.website})`);
+
+            // Use the email finder to discover emails
+            const email = await this.findBusinessEmail(business);
+
+            if (email) {
+                this.emailFinderStatus.emailsFound++;
+
+                // Extract the source of the email if available
+                const source = emailFinder.lastExtractedEmailSources?.get(email.toLowerCase());
+                const sourceDesc = source ? ` (found in ${source})` : '';
+
+                logger.info(`Email found for business ${business.id}: ${email}${sourceDesc}`);
+            } else {
+                logger.info(`No email found for business ${business.id}`);
+            }
+
+            // Update processed count
+            this.emailFinderStatus.processed++;
+        } catch (error) {
+            // Don't let one error stop the entire process
+            logger.error(`Error processing business email for ${business?.id}: ${error.message}`);
+            this.emailFinderStatus.processed++;
+        }
+    }
+
+    /**
+     * Find an email for a specific business
+     * @param {Object} business - Business data with website and domain
+     * @returns {Promise<string|null>} Found email or null
+     */
+    async findBusinessEmail(business) {
+        // If no website, can't find email
+        if (!business.website && !business.domain) {
+            return null;
+        }
+
+        try {
+            // Get the business website
+            const website = business.website;
+            if (!website) {
+                logger.info(`No website available for business ${business.id}`);
+                return null;
+            }
+
+            logger.info(`Searching for email for business ${business.id} with website ${website}`);
+
+            // Call the actual email finder logic - ONLY returns REAL emails found on the site
+            // Will return null if no valid email is found
+            const email = await findEmailSafe(website, {
+                businessName: business.name,
+                domain: business.domain,
+                timeout: 30000, // 30 seconds timeout
+                maxDepth: 2,    // How deep to crawl
+                generateArtificialEmails: false // IMPORTANT: Ensure we never generate artificial emails
+            });
+
+            // Log the result
+            if (email) {
+                logger.info(`Real email found for business ${business.id}: ${email}`);
+            } else {
+                logger.info(`No email found for business ${business.id} - returning null`);
+            }
+
+            return email; // Will be null if no email found
+        } catch (error) {
+            logger.error(`Error finding email for ${business.name}: ${error.message}`);
+            return null;
         }
     }
 

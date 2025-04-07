@@ -1,168 +1,90 @@
 import { NextResponse } from 'next/server';
-import scraperService from '@/services/scraperService';
 import db from '@/services/database';
 import logger from '@/services/logger';
 
-// Cache for statistics data - much longer cache time
-const statsCache = {
-    data: null,
+// Cache for stats to reduce DB load
+const cache = {
+    stats: null,
     timestamp: 0,
-    maxAge: 60 * 60 * 1000, // 1 hour (instead of 5 minutes)
-    isFetching: false
+    maxAge: 30 * 60 * 1000 // 30 minutes
 };
 
-// Track clients that requested stats
-const clientRequests = new Set();
-
-export async function GET(request) {
+export async function GET() {
     try {
-        // Extract request info for logging
-        const requestId = Math.random().toString(36).substring(2, 10);
-        const { searchParams, headers } = new URL(request.url);
-        const forceRefresh = searchParams.get('refresh') === 'true';
-        const userAgent = headers.get('user-agent') || 'unknown';
-
-        // Get client IP for tracking duplicate requests
-        const clientIp = request.headers.get('x-forwarded-for') ||
-            request.headers.get('x-real-ip') ||
-            'unknown';
-
-        const clientKey = `${clientIp}:${userAgent.substring(0, 20)}`;
-        const logPrefix = `[Stats:${requestId}]`;
-
-        // If this client has requested recently, log and use cache more aggressively
-        const now = Date.now();
-        const cacheAge = now - statsCache.timestamp;
-
-        // Only log the first request from each client - reduces log spam
-        if (!clientRequests.has(clientKey)) {
-            clientRequests.add(clientKey);
-            setTimeout(() => clientRequests.delete(clientKey), 60000); // Clear after 1 minute
-            logger.debug(`${logPrefix} New stats request from client ${clientKey}`);
-        }
-
-        // Use cached data unless force refresh or cache expired
-        if (!forceRefresh && statsCache.data && cacheAge < statsCache.maxAge) {
-            return NextResponse.json(statsCache.data);
-        }
-
-        // Prevent multiple concurrent stats fetches
-        if (statsCache.isFetching) {
-            // Return cached data if available
-            if (statsCache.data) {
-                return NextResponse.json(statsCache.data);
-            }
-
-            // If no cached data, return simple response
-            return NextResponse.json({
-                status: 'loading',
-                message: 'Statistics are currently being fetched'
-            });
-        }
-
-        // Initialize database if needed
         await db.init();
 
-        try {
-            statsCache.isFetching = true;
-            logger.info(`${logPrefix} Fetching fresh statistics`);
-
-            // Optimized query to get count statistics in one go
-            const counts = await db.getOne(`
-                SELECT 
-                    (SELECT COUNT(*) FROM business_listings) AS total_businesses,
-                    (SELECT COUNT(*) FROM business_listings WHERE email IS NOT NULL AND email != '') AS total_emails,
-                    (SELECT COUNT(*) FROM business_listings WHERE website IS NOT NULL AND website != '') AS total_websites
-            `);
-
-            // Get distinct search terms count only
-            const searchTermCount = await db.getOne('SELECT COUNT(DISTINCT search_term) AS count FROM business_listings');
-
-            // Get states with counts - limit to top states
-            const stateData = await db.getMany(`
-                SELECT state, COUNT(*) as count 
-                FROM business_listings 
-                WHERE state IS NOT NULL 
-                GROUP BY state 
-                ORDER BY count DESC 
-                LIMIT 10
-            `);
-
-            // Get task statistics
-            const taskStats = await db.getMany(`
-                SELECT status, COUNT(*) as count 
-                FROM scraping_tasks 
-                GROUP BY status
-            `);
-
-            // Get recent tasks
-            const recentTasks = await db.getMany(`
-                SELECT id, search_term, status, created_at, completed_at, businesses_found
-                FROM scraping_tasks
-                ORDER BY created_at DESC
-                LIMIT 5
-            `);
-
-            // Calculate coverage percentages
-            const totalBusinesses = parseInt(counts?.total_businesses || '0');
-            const totalEmails = parseInt(counts?.total_emails || '0');
-            const totalWebsites = parseInt(counts?.total_websites || '0');
-
-            const emailCoverage = totalBusinesses > 0
-                ? Math.round((totalEmails / totalBusinesses) * 100)
-                : 0;
-
-            const websiteCoverage = totalBusinesses > 0
-                ? Math.round((totalWebsites / totalBusinesses) * 100)
-                : 0;
-
-            // Return stats
-            const stats = {
-                totalBusinesses,
-                totalEmails,
-                totalWebsites,
-                totalSearchTerms: parseInt(searchTermCount?.count || '0'),
-                states: stateData.map(row => row.state),
-                stateData,
-                emailCoverage,
-                websiteCoverage,
-                tasks: {
-                    total: taskStats.reduce((acc, curr) => acc + parseInt(curr.count), 0),
-                    byStatus: taskStats.reduce((acc, curr) => {
-                        acc[curr.status] = parseInt(curr.count);
-                        return acc;
-                    }, {}),
-                    recent: recentTasks
-                },
-                generatedAt: new Date().toISOString()
-            };
-
-            // Update cache
-            statsCache.data = stats;
-            statsCache.timestamp = now;
-
-            logger.info(`Statistics fetched successfully`);
-
-            // Set cache headers on response
-            const headers = new Headers();
-            headers.set('Cache-Control', 'max-age=3600');
-
-            return NextResponse.json(stats, { headers });
-        } finally {
-            statsCache.isFetching = false;
+        // Check if we have cached stats that are still fresh
+        const now = Date.now();
+        if (cache.stats && (now - cache.timestamp) < cache.maxAge) {
+            return NextResponse.json(cache.stats);
         }
+
+        // Count all businesses
+        const businessCount = await db.getOne('SELECT COUNT(*) as count FROM business_listings');
+        const emailCount = await db.getOne('SELECT COUNT(*) as count FROM business_listings WHERE email IS NOT NULL AND email != \'\'');
+        const websiteCount = await db.getOne('SELECT COUNT(*) as count FROM business_listings WHERE website IS NOT NULL AND website != \'\'');
+
+        // Get unique search terms (categories)
+        const searchTerms = await db.getMany('SELECT COUNT(DISTINCT search_term) as count FROM business_listings');
+
+        // Get states with at least 1 business
+        const states = await db.getMany('SELECT DISTINCT state FROM business_listings WHERE state IS NOT NULL AND state != \'\' ORDER BY state');
+
+        // Get top states by count
+        const stateData = await db.getMany(`
+      SELECT state, COUNT(*) as count 
+      FROM business_listings 
+      WHERE state IS NOT NULL AND state != '' 
+      GROUP BY state 
+      ORDER BY count DESC 
+      LIMIT 10
+    `);
+
+        // Get task statistics
+        const taskStats = await db.getMany('SELECT status, COUNT(*) as count FROM scraping_tasks GROUP BY status');
+
+        // Get category statistics
+        const categoryStats = await db.getMany(`
+      SELECT COUNT(*) as count FROM categories
+    `);
+
+        // Create stats object
+        const stats = {
+            totalBusinesses: parseInt(businessCount?.count || '0'),
+            totalEmails: parseInt(emailCount?.count || '0'),
+            totalWebsites: parseInt(websiteCount?.count || '0'),
+            totalSearchTerms: parseInt(searchTerms[0]?.count || '0'),
+            totalCategories: parseInt(categoryStats[0]?.count || '0'),
+            states: states.map(row => row.state),
+            stateData: stateData.map(row => ({
+                state: row.state,
+                count: parseInt(row.count)
+            })),
+            emailCoverage: parseInt(businessCount?.count) > 0
+                ? Math.round((parseInt(emailCount?.count) / parseInt(businessCount?.count)) * 100)
+                : 0,
+            websiteCoverage: parseInt(businessCount?.count) > 0
+                ? Math.round((parseInt(websiteCount?.count) / parseInt(businessCount?.count)) * 100)
+                : 0,
+            tasks: {
+                total: taskStats.reduce((acc, curr) => acc + parseInt(curr.count), 0),
+                byStatus: taskStats.reduce((acc, curr) => {
+                    acc[curr.status] = parseInt(curr.count);
+                    return acc;
+                }, {})
+            }
+        };
+
+        // Update cache
+        cache.stats = stats;
+        cache.timestamp = now;
+
+        return NextResponse.json(stats);
     } catch (error) {
-        logger.error(`Error getting statistics: ${error.message}`);
+        logger.error(`Error fetching stats: ${error.message}`);
         return NextResponse.json(
-            { error: 'Failed to get statistics', details: error.message },
+            { error: 'Failed to fetch stats', details: error.message },
             { status: 500 }
         );
     }
-}
-
-// Add an endpoint to manually clear the cache if needed
-export async function DELETE() {
-    statsCache.data = null;
-    statsCache.timestamp = 0;
-    return NextResponse.json({ message: 'Statistics cache cleared' });
 }

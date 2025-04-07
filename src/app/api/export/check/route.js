@@ -1,98 +1,111 @@
 import { NextResponse } from 'next/server';
+import exportService from '@/services/exportService';
 import db from '@/services/database';
 import logger from '@/services/logger';
 
+// Simple cache to reduce database load
+const cache = {
+    estimates: new Map(),
+    maxAge: 2 * 60 * 1000, // 2 minutes
+};
+
 export async function POST(request) {
     try {
-        await db.init();
         const body = await request.json();
-        const { taskId, state, filter } = body;
+        const { taskId, state, filter, randomCategories, randomCategoryCount, excludeCategories, forceUnfiltered } = body;
 
-        let query = '';
-        let params = [];
-        let paramIndex = 1;
-        let description = '';
+        // Generate a cache key based on request
+        const cacheKey = JSON.stringify(body);
 
-        // Build the appropriate query based on the request type
+        // Check if we have this estimate in cache
+        const now = Date.now();
+        const cachedEstimate = cache.estimates.get(cacheKey);
+        if (cachedEstimate && (now - cachedEstimate.timestamp < cache.maxAge)) {
+            return NextResponse.json({
+                count: cachedEstimate.count,
+                cached: true,
+                timeToEstimate: 0
+            });
+        }
+
+        // Initialize database if needed
+        await db.init();
+
+        const startTime = Date.now();
+        let estimatedCount = 0;
+
         if (taskId) {
-            // Check task exists and has records
-            const task = await db.getOne('SELECT search_term FROM scraping_tasks WHERE id = $1', [taskId]);
+            // Estimate task results count
+            const task = await exportService.getTaskById(taskId);
 
             if (!task) {
-                return NextResponse.json(
-                    { count: 0, message: 'Task not found', query: `Task ID: ${taskId}` },
-                    { status: 404 }
-                );
+                return NextResponse.json({
+                    error: 'Task not found',
+                    count: 0
+                }, { status: 404 });
             }
 
-            query = 'SELECT COUNT(*) FROM business_listings WHERE task_id = $1';
-            params = [taskId];
-            description = `Task: ${task.search_term}`;
-        }
-        else if (state) {
-            // Check state has records
-            query = 'SELECT COUNT(*) FROM business_listings WHERE state = $1';
-            params = [state];
-            description = `State: ${state}`;
-        }
-        else if (filter) {
-            // Build filtered query
-            query = 'SELECT COUNT(*) FROM business_listings WHERE 1=1';
+            estimatedCount = await db.getCount(
+                'business_listings',
+                'task_id = $1',
+                [taskId]
+            );
+        } else if (state) {
+            // Estimate state export count
+            estimatedCount = await exportService.getCountByState(state);
+        } else if (randomCategories) {
+            // For random categories, we need to estimate based on category counts
+            let excludeClause = '';
+            const params = [];
 
-            if (filter.state) {
-                query += ` AND state = $${paramIndex++}`;
-                params.push(filter.state);
+            if (excludeCategories && excludeCategories.length > 0) {
+                excludeClause = `WHERE search_term NOT IN (${excludeCategories.map((_, i) => `$${i + 1}`).join(',')})`;
+                params.push(...excludeCategories);
             }
 
-            if (filter.city) {
-                query += ` AND city = $${paramIndex++}`;
-                params.push(filter.city);
-            }
+            // Get counts per category and select random ones
+            const categoryCounts = await db.getMany(`
+        SELECT search_term, COUNT(*) as count
+        FROM business_listings
+        ${excludeClause}
+        GROUP BY search_term
+        ORDER BY RANDOM()
+        LIMIT $${params.length + 1}
+      `, [...params, randomCategoryCount || 5]);
 
-            if (filter.searchTerm) {
-                query += ` AND (search_term ILIKE $${paramIndex} OR name ILIKE $${paramIndex})`;
-                params.push(`%${filter.searchTerm}%`);
-                paramIndex++;
-            }
-
-            if (filter.hasEmail === true) {
-                query += ' AND email IS NOT NULL AND email != \'\'';
-            } else if (filter.hasEmail === false) {
-                query += ' AND (email IS NULL OR email = \'\')';
-            }
-
-            if (filter.hasWebsite === true) {
-                query += ' AND website IS NOT NULL AND website != \'\'';
-            } else if (filter.hasWebsite === false) {
-                query += ' AND (website IS NULL OR website = \'\')';
-            }
-
-            description = `Filter: ${JSON.stringify(filter)}`;
-        }
-        else {
-            // Count all records
-            query = 'SELECT COUNT(*) FROM business_listings';
-            description = 'All records';
+            // Sum up the counts, applying the contact limit per category
+            const contactLimit = filter?.contactLimit || 200;
+            estimatedCount = categoryCounts.reduce((total, cat) => {
+                return total + Math.min(parseInt(cat.count), contactLimit);
+            }, 0);
+        } else if (filter && Object.keys(filter).length > 0) {
+            // Estimate filtered count
+            estimatedCount = await exportService.getFilteredCount(filter);
+        } else if (forceUnfiltered) {
+            // For unfiltered export, get total count
+            estimatedCount = await exportService.getTotalCount();
+        } else {
+            // Default to all businesses
+            estimatedCount = await exportService.getTotalCount();
         }
 
-        // Log the query for debugging
-        logger.info(`Checking export count: ${description}`);
+        const timeToEstimate = Date.now() - startTime;
 
-        // Execute the count query
-        const result = await db.getOne(query, params);
-        const count = parseInt(result?.count || '0');
+        // Store in cache
+        cache.estimates.set(cacheKey, {
+            count: estimatedCount,
+            timestamp: now
+        });
 
-        // Return the count with diagnostic info
         return NextResponse.json({
-            count,
-            description,
-            query: `${query} with ${params.length} parameters`,
-            hasData: count > 0
+            count: estimatedCount,
+            timeToEstimate,
+            cached: false
         });
     } catch (error) {
-        logger.error(`Error checking exportable data: ${error.message}`);
+        logger.error(`Error estimating export: ${error.message}`);
         return NextResponse.json(
-            { error: 'Failed to check data for export', details: error.message },
+            { error: 'Failed to estimate export size', details: error.message, count: 0 },
             { status: 500 }
         );
     }

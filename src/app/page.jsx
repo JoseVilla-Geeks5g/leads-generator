@@ -27,11 +27,11 @@ export default function HomePage() {
                             </div>
                             <div className="flex items-center mt-4 md:mt-0 space-x-4">
                                 <button
-                                    onClick={() => router.push('/settings')}
-                                    className="btn btn-outline flex items-center px-4 py-2.5"
+                                    onClick={() => router.push('/export')}
+                                    className="btn btn-secondary flex items-center px-4 py-2.5 shadow-sm hover:shadow-md"
                                 >
-                                    <span className="material-icons mr-2 text-sm">settings</span>
-                                    Settings
+                                    <span className="material-icons mr-2 text-sm">download</span>
+                                    Export Data
                                 </button>
                                 <button
                                     onClick={() => router.push('/leads')}
@@ -43,22 +43,22 @@ export default function HomePage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                            <div className="lg:col-span-2">
-                                <TaskStatusPanel />
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                            <div className="lg:col-span-3">
+                                <SearchFilters />
                             </div>
-                            <div>
+                            <div className="lg:col-span-1">
                                 <StatisticsPanel />
+                                <TasksPanel />
                             </div>
+
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                            <div className="lg:col-span-2">
-                                <SearchFilters />
+                            <div className="lg:col-span-1">
+                                <TaskStatusPanel />
                             </div>
-                            <div>
-                                <TasksPanel />
-                            </div>
+
                         </div>
                     </div>
                 </main>

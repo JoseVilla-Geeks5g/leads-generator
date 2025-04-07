@@ -8,19 +8,33 @@ import path from 'path';
 // Check if we're running on server
 const isServer = typeof window === 'undefined';
 
+/**
+ * Centralized logging service with different log levels and formatting
+ */
 class Logger {
     constructor() {
-        this.levels = {
-            debug: 0,
-            info: 1,
-            warn: 2,
-            error: 3
+        this.logLevels = {
+            'debug': 0,
+            'info': 1,
+            'warn': 2,
+            'error': 3,
         };
 
-        // Default level based on environment
-        this.level = isServer && process.env.LOG_LEVEL
-            ? this.levels[process.env.LOG_LEVEL.toLowerCase()] || this.levels.info
-            : this.levels.info;
+        // Set default level from environment or default to info
+        this.currentLevel = this.logLevels[process.env.LOG_LEVEL?.toLowerCase() || 'info'];
+
+        // Error count tracking for diagnostics
+        this.errorCounts = {
+            total: 0,
+            database: 0,
+            connection: 0,
+            schema: 0,
+            other: 0
+        };
+
+        // Keep track of the last few errors for diagnostics
+        this.recentErrors = [];
+        this.maxRecentErrors = 10;
 
         // Setup log directory on server
         if (isServer) {
@@ -46,15 +60,125 @@ class Logger {
         }
     }
 
-    setLogLevel(level) {
-        if (this.levels[level.toLowerCase()] !== undefined) {
-            this.level = this.levels[level.toLowerCase()];
-        }
-    }
-
+    /**
+     * Format a log message with timestamp and level
+     * @param {string} level - Log level
+     * @param {string} message - Message to log
+     * @returns {string} - Formatted message
+     */
     formatMessage(level, message) {
         const timestamp = new Date().toISOString();
         return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+    }
+
+    /**
+     * Log a debug message
+     * @param {string} message - Message to log
+     */
+    debug(message) {
+        if (this.currentLevel <= this.logLevels.debug) {
+            const formattedMessage = this.formatMessage('debug', message);
+            console.debug(formattedMessage);
+            this.writeToFile(formattedMessage);
+        }
+    }
+
+    /**
+     * Log an info message
+     * @param {string} message - Message to log
+     */
+    info(message) {
+        if (this.currentLevel <= this.logLevels.info) {
+            const formattedMessage = this.formatMessage('info', message);
+            console.info(formattedMessage);
+            this.writeToFile(formattedMessage);
+        }
+    }
+
+    /**
+     * Log a warning message
+     * @param {string} message - Message to log
+     */
+    warn(message) {
+        if (this.currentLevel <= this.logLevels.warn) {
+            const formattedMessage = this.formatMessage('warn', message);
+            console.warn(formattedMessage);
+            this.writeToFile(formattedMessage);
+        }
+    }
+
+    /**
+     * Log an error message
+     * @param {string} message - Error message
+     * @param {Error} [error] - Optional error object
+     */
+    error(message, error = null) {
+        if (this.currentLevel <= this.logLevels.error) {
+            const formattedMessage = this.formatMessage('error', message);
+            console.error(formattedMessage);
+            this.writeToFile(formattedMessage, true);
+
+            if (error && error.stack) {
+                console.error(error.stack);
+            }
+        }
+
+        // Track error count for diagnostics
+        this.errorCounts.total++;
+
+        // Categorize errors
+        if (message.includes('database') || message.includes('Database') ||
+            message.includes('query') || message.includes('column') ||
+            message.includes('table')) {
+            this.errorCounts.database++;
+
+            if (message.includes('connect') || message.includes('timeout')) {
+                this.errorCounts.connection++;
+            }
+
+            if (message.includes('column') || message.includes('params') ||
+                message.includes('does not exist')) {
+                this.errorCounts.schema++;
+            }
+        } else {
+            this.errorCounts.other++;
+        }
+
+        // Store recent errors
+        this.recentErrors.unshift({
+            timestamp: new Date().toISOString(),
+            message,
+            stack: error ? error.stack : null
+        });
+
+        // Trim array if needed
+        if (this.recentErrors.length > this.maxRecentErrors) {
+            this.recentErrors.pop();
+        }
+    }
+
+    /**
+     * Get diagnostics information
+     * @returns {Object} - Diagnostics data
+     */
+    getDiagnostics() {
+        return {
+            errorCounts: this.errorCounts,
+            recentErrors: this.recentErrors,
+            logLevel: Object.keys(this.logLevels).find(key =>
+                this.logLevels[key] === this.currentLevel
+            )
+        };
+    }
+
+    /**
+     * Set the log level
+     * @param {string} level - New log level
+     */
+    setLogLevel(level) {
+        if (this.logLevels[level] !== undefined) {
+            this.currentLevel = this.logLevels[level];
+        }
     }
 
     writeToFile(message, isError = false) {
@@ -73,38 +197,6 @@ class Logger {
         }
     }
 
-    debug(message) {
-        if (this.level <= this.levels.debug) {
-            const formattedMessage = this.formatMessage('DEBUG', message);
-            console.log(formattedMessage);
-            this.writeToFile(formattedMessage);
-        }
-    }
-
-    info(message) {
-        if (this.level <= this.levels.info) {
-            const formattedMessage = this.formatMessage('INFO', message);
-            console.log(formattedMessage);
-            this.writeToFile(formattedMessage);
-        }
-    }
-
-    warn(message) {
-        if (this.level <= this.levels.warn) {
-            const formattedMessage = this.formatMessage('WARN', message);
-            console.warn(formattedMessage);
-            this.writeToFile(formattedMessage);
-        }
-    }
-
-    error(message) {
-        if (this.level <= this.levels.error) {
-            const formattedMessage = this.formatMessage('ERROR', message);
-            console.error(formattedMessage);
-            this.writeToFile(formattedMessage, true);
-        }
-    }
-
     // Close log streams
     close() {
         if (isServer) {
@@ -118,8 +210,8 @@ class Logger {
     }
 }
 
-// Create a singleton instance
+// Create singleton instance
 const logger = new Logger();
 
-// Export the logger service
+// Export the service
 export default logger;

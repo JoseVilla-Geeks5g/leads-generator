@@ -28,10 +28,14 @@ export async function GET(request) {
         const limit = parseInt(searchParams.get('limit') || '50');
         const offset = parseInt(searchParams.get('offset') || '0');
         const searchTerm = searchParams.get('search') || '';
+        const category = searchParams.get('category');
+        const city = searchParams.get('city');
+        const hasWebsite = searchParams.get('hasWebsite');
+        const minRating = searchParams.get('minRating');
 
         // Generate cache key
         const cacheKey = JSON.stringify({
-            country, state, sortBy, sortOrder, hasEmail, limit, offset, searchTerm
+            country, state, sortBy, sortOrder, hasEmail, limit, offset, searchTerm, category, city, hasWebsite, minRating
         });
 
         // Check cache first
@@ -82,11 +86,32 @@ export async function GET(request) {
             paramIndex++;
         }
 
+        if (category) {
+            query += ` AND search_term = $${paramIndex++}`;
+            queryParams.push(category);
+        }
+
+        if (city) {
+            query += ` AND city = $${paramIndex++}`;
+            queryParams.push(city);
+        }
+
         // Optimize email filter to use the idx_business_listings_email_exists index
         if (hasEmail === 'true') {
             query += ` AND email IS NOT NULL AND email != ''`;
         } else if (hasEmail === 'false') {
             query += ` AND (email IS NULL OR email = '')`;
+        }
+
+        if (hasWebsite === 'true') {
+            query += ` AND website IS NOT NULL AND website != ''`;
+        } else if (hasWebsite === 'false') {
+            query += ` AND (website IS NULL OR website = '')`;
+        }
+
+        if (minRating) {
+            query += ` AND rating >= $${paramIndex++}`;
+            queryParams.push(parseFloat(minRating));
         }
 
         // Validate sort parameters
@@ -140,10 +165,31 @@ export async function GET(request) {
             paramIndex++;
         }
 
+        if (category) {
+            countQuery += ` AND search_term = $${paramIndex++}`;
+            countParams.push(category);
+        }
+
+        if (city) {
+            countQuery += ` AND city = $${paramIndex++}`;
+            countParams.push(city);
+        }
+
         if (hasEmail === 'true') {
             countQuery += ` AND email IS NOT NULL AND email != ''`;
         } else if (hasEmail === 'false') {
             countQuery += ` AND (email IS NULL OR email = '')`;
+        }
+
+        if (hasWebsite === 'true') {
+            countQuery += ` AND website IS NOT NULL AND website != ''`;
+        } else if (hasWebsite === 'false') {
+            countQuery += ` AND (website IS NULL OR website = '')`;
+        }
+
+        if (minRating) {
+            countQuery += ` AND rating >= $${paramIndex++}`;
+            countParams.push(parseFloat(minRating));
         }
 
         const countResult = await db.getCount('business_listings', countQuery.replace('SELECT COUNT(*) as total FROM business_listings WHERE', ''), countParams);
@@ -213,6 +259,67 @@ export async function GET(request) {
         logger.error(`Error fetching contacts: ${error.message}`);
         return NextResponse.json(
             { error: 'Failed to fetch contacts', details: error.message },
+            { status: 500 }
+        );
+    }
+}
+
+export async function POST(request) {
+    try {
+        await db.init();
+
+        const body = await request.json();
+        const { businessId, notes, contacted } = body;
+
+        if (!businessId) {
+            return NextResponse.json(
+                { error: 'Business ID is required' },
+                { status: 400 }
+            );
+        }
+
+        // Update business with contact info
+        const updateFields = [];
+        const params = [businessId];
+        let paramIndex = 2;
+
+        if (notes !== undefined) {
+            updateFields.push(`notes = $${paramIndex++}`);
+            params.push(notes);
+        }
+
+        if (contacted !== undefined) {
+            updateFields.push(`contacted = $${paramIndex++}`);
+            params.push(contacted);
+        }
+
+        if (updateFields.length === 0) {
+            return NextResponse.json(
+                { error: 'No fields to update' },
+                { status: 400 }
+            );
+        }
+
+        updateFields.push('updated_at = NOW()');
+
+        const query = `UPDATE business_listings SET ${updateFields.join(', ')} WHERE id = $1 RETURNING *`;
+        const result = await db.query(query, params);
+
+        if (result.rowCount === 0) {
+            return NextResponse.json(
+                { error: 'Business not found' },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({
+            message: 'Business updated successfully',
+            business: result.rows[0]
+        });
+    } catch (error) {
+        logger.error(`Error updating business: ${error.message}`);
+        return NextResponse.json(
+            { error: 'Failed to update business', details: error.message },
             { status: 500 }
         );
     }

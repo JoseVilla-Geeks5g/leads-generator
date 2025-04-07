@@ -10,6 +10,7 @@ export default function Sidebar() {
     const navItems = [
         { icon: 'dashboard', label: 'Dashboard', path: '/' },
         { icon: 'search', label: 'Leads', path: '/leads' },
+        { icon: 'search', label: 'Email Finder', path: '/email-finder' },
         { icon: 'history', label: 'History', path: '/history' },
         { icon: 'people', label: 'Contacts', path: '/contacts' },
         { icon: 'analytics', label: 'Analytics', path: '/analytics' },

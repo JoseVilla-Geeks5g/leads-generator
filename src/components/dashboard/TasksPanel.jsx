@@ -87,7 +87,7 @@ export default function TasksPanel() {
             </h2>
 
             <form onSubmit={createTask} className="mb-6">
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-col gap-3">
                     <div className="relative flex-1">
                         <input
                             type="text"

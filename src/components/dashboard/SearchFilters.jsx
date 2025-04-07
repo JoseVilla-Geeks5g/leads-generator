@@ -11,12 +11,19 @@ export default function SearchFilters() {
     const [searchRadius, setSearchRadius] = useState(10);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [excludedCategories, setExcludedCategories] = useState([]);
-    const [contactLimit, setContactLimit] = useState(100);
+    // Update the contact limit default and range
+    const [contactLimit, setContactLimit] = useState(5000);
     const [advancedMode, setAdvancedMode] = useState(false);
     const [keywordsInput, setKeywordsInput] = useState('');
     const [availableCategories, setAvailableCategories] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [lastSearch, setLastSearch] = useState(null);
+
+    // New options
+    const [useRandomCategories, setUseRandomCategories] = useState(false);
+    const [randomCategoryCount, setRandomCategoryCount] = useState(5);
+    const [searchMode, setSearchMode] = useState('specific'); // 'specific', 'random'
+
     const router = useRouter();
 
     const dataOptions = {
@@ -58,12 +65,19 @@ export default function SearchFilters() {
                         setExcludedCategories(searchData.excludedCategories || []);
                         setContactLimit(searchData.contactLimit || 100);
                         setKeywordsInput(searchData.keywords || '');
+                        setSearchMode(searchData.searchMode || 'specific');
+                        setRandomCategoryCount(searchData.randomCategoryCount || 5);
                     }
                 }
             }
         } catch (error) {
             console.error("Error loading previous search", error);
         }
+    }, []);
+
+    // Fetch categories on component mount
+    useEffect(() => {
+        fetchAllCategories();
     }, []);
 
     // Debounced category search
@@ -73,6 +87,23 @@ export default function SearchFilters() {
             callback(searchTerm);
         }, 300);
     }, []);
+
+    // Fetch all categories from database
+    const fetchAllCategories = async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch('/api/categories?limit=500');
+
+            if (response.ok) {
+                const data = await response.json();
+                setAvailableCategories(data.categories || []);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Fetch categories with caching for better performance
     const fetchCategoriesDebounced = useCallback((query) => {
@@ -98,11 +129,6 @@ export default function SearchFilters() {
             }
         });
     }, [debounceCategorySearch]);
-
-    // Initial categories load
-    useEffect(() => {
-        fetchCategoriesDebounced('');
-    }, [fetchCategoriesDebounced]);
 
     const addCategory = (category) => {
         if (category && !selectedCategories.includes(category)) {
@@ -132,7 +158,8 @@ export default function SearchFilters() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!category && selectedCategories.length === 0) {
+        // Validate based on search mode
+        if (searchMode === 'specific' && !category && selectedCategories.length === 0) {
             alert('Please enter at least one category or business type');
             return;
         }
@@ -154,50 +181,13 @@ export default function SearchFilters() {
                 excludedCategories,
                 contactLimit,
                 keywords: keywordsInput,
+                searchMode,
+                randomCategoryCount,
                 timestamp: new Date().toISOString()
             };
 
             localStorage.setItem('last_search', JSON.stringify(searchParams));
             setLastSearch(searchParams);
-
-            // Build query parameters for the search
-            const apiParams = new URLSearchParams();
-
-            // Add main parameters
-            if (category) {
-                apiParams.set('searchTerm', category);
-            }
-
-            // Add location
-            apiParams.set('location', location);
-
-            // Add search radius
-            apiParams.set('radius', searchRadius.toString());
-
-            // Add contact limit
-            apiParams.set('limit', contactLimit.toString());
-
-            // Add selected categories
-            selectedCategories.forEach(cat => {
-                apiParams.append('includeCategory', cat);
-            });
-
-            // Add excluded categories
-            excludedCategories.forEach(cat => {
-                apiParams.append('excludeCategory', cat);
-            });
-
-            // Add keywords if in advanced mode
-            if (advancedMode && keywordsInput) {
-                apiParams.set('keywords', keywordsInput);
-            }
-
-            // Add selected data options
-            const dataToExtract = Object.entries(selectedData)
-                .filter(([_, selected]) => selected)
-                .map(([name, _]) => name.toLowerCase().replace(/\s+/g, '_'));
-
-            apiParams.set('extractData', dataToExtract.join(','));
 
             // Create the task
             const response = await fetch('/api/tasks', {
@@ -206,14 +196,18 @@ export default function SearchFilters() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    searchTerm: category || selectedCategories[0],
+                    searchTerm: searchMode === 'specific' ? (category || selectedCategories[0]) : null,
                     location,
                     radius: searchRadius,
                     limit: contactLimit,
-                    includeCategories: selectedCategories,
-                    excludeCategories: excludedCategories,
+                    includeCategories: searchMode === 'specific' ? selectedCategories : [],
+                    excludeCategories,
                     keywords: keywordsInput,
-                    dataToExtract: dataToExtract
+                    useRandomCategories: searchMode === 'random',
+                    randomCategoryCount: searchMode === 'random' ? randomCategoryCount : 0,
+                    dataToExtract: Object.entries(selectedData)
+                        .filter(([_, selected]) => selected)
+                        .map(([name, _]) => name.toLowerCase().replace(/\s+/g, '_'))
                 }),
             });
 
@@ -242,6 +236,8 @@ export default function SearchFilters() {
         setExcludedCategories([]);
         setKeywordsInput('');
         setContactLimit(100);
+        setSearchMode('specific');
+        setRandomCategoryCount(5);
 
         // Reset data extraction options
         setSelectedData({
@@ -274,55 +270,172 @@ export default function SearchFilters() {
             </h2>
 
             <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-                    <div>
-                        <label className="block text-sm font-medium mb-2">Business Category</label>
-                        {/* Use SearchableSelect for better performance */}
-                        <SearchableSelect
-                            placeholder="e.g. restaurants, lawyers, dentists..."
-                            value={category}
-                            onChange={setCategory}
-                            onSelect={(selectedCategory) => {
-                                setCategory(selectedCategory);
-                                if (selectedCategory && !selectedCategories.includes(selectedCategory)) {
-                                    addCategory(selectedCategory);
-                                }
-                            }}
-                            apiUrl="/api/categories"
-                        />
-
-                        {/* Selected Categories */}
-                        {selectedCategories.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                {selectedCategories.map(cat => (
-                                    <div key={cat} className="bg-primary-light text-primary px-3 py-1 rounded-full text-sm flex items-center">
-                                        <span>{cat}</span>
-                                        <button
-                                            type="button"
-                                            className="ml-2"
-                                            onClick={() => removeCategory(cat)}
-                                        >
-                                            <span className="material-icons text-xs">close</span>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                {/* Search Mode Tabs */}
+                <div className="mb-6 border-b border-light">
+                    <div className="flex">
+                        <button
+                            type="button"
+                            className={`py-2 px-4 font-medium text-sm border-b-2 ${searchMode === 'specific'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-500 hover:text-primary'}`}
+                            onClick={() => setSearchMode('specific')}
+                        >
+                            Specific Search
+                        </button>
+                        <button
+                            type="button"
+                            className={`py-2 px-4 font-medium text-sm border-b-2 ${searchMode === 'random'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-gray-500 hover:text-primary'}`}
+                            onClick={() => setSearchMode('random')}
+                        >
+                            Random Categories
+                        </button>
                     </div>
+                </div>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-2">Location</label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="e.g. New York, San Francisco..."
-                                className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
-                                value={location}
-                                onChange={(e) => setLocation(e.target.value)}
+                {searchMode === 'specific' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Business Category</label>
+                            <SearchableSelect
+                                placeholder="e.g. restaurants, lawyers, dentists..."
+                                value={category}
+                                onChange={setCategory}
+                                onSelect={(selectedCategory) => {
+                                    setCategory(selectedCategory);
+                                    if (selectedCategory && !selectedCategories.includes(selectedCategory)) {
+                                        addCategory(selectedCategory);
+                                    }
+                                }}
+                                apiUrl="/api/categories"
                             />
-                            <span className="material-icons absolute left-3 top-3 text-gray-400">location_on</span>
+
+                            {/* Selected Categories */}
+                            {selectedCategories.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {selectedCategories.map(cat => (
+                                        <div key={cat} className="bg-primary-light text-primary px-3 py-1 rounded-full text-sm flex items-center">
+                                            <span>{cat}</span>
+                                            <button
+                                                type="button"
+                                                className="ml-2"
+                                                onClick={() => removeCategory(cat)}
+                                            >
+                                                <span className="material-icons text-xs">close</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Location</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="e.g. New York, San Francisco..."
+                                    className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                />
+                                <span className="material-icons absolute left-3 top-3 text-gray-400">location_on</span>
+                            </div>
                         </div>
                     </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Random Category Settings</label>
+                            <div className="bg-accent p-4 rounded-lg">
+                                <div className="flex justify-between text-sm font-medium mb-2">
+                                    <span>Number of random categories</span>
+                                    <span className="text-primary font-semibold">{randomCategoryCount}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="20"
+                                    step="1"
+                                    className="w-full accent-primary h-2 rounded-lg appearance-none bg-gray-200"
+                                    value={randomCategoryCount}
+                                    onChange={(e) => setRandomCategoryCount(parseInt(e.target.value))}
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>1</span>
+                                    <span>10</span>
+                                    <span>20</span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    The system will randomly select {randomCategoryCount} categories from the database
+                                    for scraping, excluding any categories you've specified to exclude.
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Location</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="e.g. New York, San Francisco..."
+                                    className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                />
+                                <span className="material-icons absolute left-3 top-3 text-gray-400">location_on</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Excluded Categories - available in both modes */}
+                <div className="mb-5">
+                    <label className="block text-sm font-medium mb-2">Exclude Categories</label>
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <select
+                                className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                value=""
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        addExcludedCategory(e.target.value);
+                                        e.target.value = '';
+                                    }
+                                }}
+                            >
+                                <option value="">Choose categories to exclude...</option>
+                                {availableCategories
+                                    .filter(cat => !excludedCategories.includes(cat))
+                                    .map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))
+                                }
+                            </select>
+                            <span className="material-icons absolute left-3 top-3 text-gray-400">block</span>
+                        </div>
+                    </div>
+
+                    {/* Excluded Categories Tags */}
+                    {excludedCategories.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {excludedCategories.map(cat => (
+                                <div key={cat} className="bg-error-light text-error px-3 py-1 rounded-full text-sm flex items-center">
+                                    <span>{cat}</span>
+                                    <button
+                                        type="button"
+                                        className="ml-2"
+                                        onClick={() => removeExcludedCategory(cat)}
+                                    >
+                                        <span className="material-icons text-xs">close</span>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                        These categories will be excluded from your search results
+                    </p>
                 </div>
 
                 {advancedMode && (
@@ -342,55 +455,6 @@ export default function SearchFilters() {
                             </div>
                             <p className="text-xs text-gray-500 mt-1">
                                 Add specific keywords to narrow your search (e.g., "organic, vegan, takeout")
-                            </p>
-                        </div>
-
-                        {/* Excluded Categories */}
-                        <div className="mb-5">
-                            <label className="block text-sm font-medium mb-2">Exclude Categories</label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <select
-                                        className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
-                                        value=""
-                                        onChange={(e) => {
-                                            if (e.target.value) {
-                                                addExcludedCategory(e.target.value);
-                                                e.target.value = '';
-                                            }
-                                        }}
-                                    >
-                                        <option value="">Choose categories to exclude...</option>
-                                        {availableCategories
-                                            .filter(cat => !excludedCategories.includes(cat))
-                                            .map(cat => (
-                                                <option key={cat} value={cat}>{cat}</option>
-                                            ))
-                                        }
-                                    </select>
-                                    <span className="material-icons absolute left-3 top-3 text-gray-400">block</span>
-                                </div>
-                            </div>
-
-                            {/* Excluded Categories Tags */}
-                            {excludedCategories.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                    {excludedCategories.map(cat => (
-                                        <div key={cat} className="bg-error-light text-error px-3 py-1 rounded-full text-sm flex items-center">
-                                            <span>{cat}</span>
-                                            <button
-                                                type="button"
-                                                className="ml-2"
-                                                onClick={() => removeExcludedCategory(cat)}
-                                            >
-                                                <span className="material-icons text-xs">close</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                                These categories will be excluded from your search results
                             </p>
                         </div>
                     </>
@@ -420,23 +484,26 @@ export default function SearchFilters() {
 
                     <div>
                         <div className="flex justify-between text-sm font-medium mb-2">
-                            <span>Contact Limit</span>
+                            <span>Contact Limit Per Category</span>
                             <span className="text-primary font-semibold">{contactLimit}</span>
                         </div>
                         <input
                             type="range"
-                            min="10"
-                            max="500"
-                            step="10"
+                            min="1000"
+                            max="50000"
+                            step="1000"
                             className="w-full accent-primary h-2 rounded-lg appearance-none bg-gray-200"
                             value={contactLimit}
                             onChange={(e) => setContactLimit(parseInt(e.target.value))}
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>10</span>
-                            <span>250</span>
-                            <span>500</span>
+                            <span>1k</span>
+                            <span>25k</span>
+                            <span>50k</span>
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Maximum number of contacts to gather per category
+                        </p>
                     </div>
                 </div>
 
