@@ -1,0 +1,9 @@
+# To use the enhanced Google Maps scraper with stealth features, install these packages:
+npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth
+
+# Current implementation uses standard puppeteer only, but for better anti-detection 
+# capabilities, you should install the packages above and update the GoogleMapsScraper.js file to use:
+
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+puppeteer.use(StealthPlugin());

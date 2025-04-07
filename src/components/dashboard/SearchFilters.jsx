@@ -55,19 +55,16 @@ export default function SearchFilters() {
                 if (searchData) {
                     setLastSearch(searchData);
 
-                    // Auto-fill last search if user wants to
-                    const autoFill = confirm("Do you want to load your last search parameters?");
-                    if (autoFill) {
-                        setCategory(searchData.category || '');
-                        setLocation(searchData.location || '');
-                        setSearchRadius(searchData.searchRadius || 10);
-                        setSelectedCategories(searchData.selectedCategories || []);
-                        setExcludedCategories(searchData.excludedCategories || []);
-                        setContactLimit(searchData.contactLimit || 100);
-                        setKeywordsInput(searchData.keywords || '');
-                        setSearchMode(searchData.searchMode || 'specific');
-                        setRandomCategoryCount(searchData.randomCategoryCount || 5);
-                    }
+                    // Auto-fill last search without asking for confirmation
+                    setCategory(searchData.category || '');
+                    setLocation(searchData.location || '');
+                    setSearchRadius(searchData.searchRadius || 10);
+                    setSelectedCategories(searchData.selectedCategories || []);
+                    setExcludedCategories(searchData.excludedCategories || []);
+                    setContactLimit(searchData.contactLimit || 5000);
+                    setKeywordsInput(searchData.keywords || '');
+                    setSearchMode(searchData.searchMode || 'specific');
+                    setRandomCategoryCount(searchData.randomCategoryCount || 5);
                 }
             }
         } catch (error) {
@@ -178,7 +175,7 @@ export default function SearchFilters() {
                 location,
                 searchRadius,
                 selectedCategories,
-                excludedCategories,
+                excludedCategories, // Use the state variable here
                 contactLimit,
                 keywords: keywordsInput,
                 searchMode,
@@ -201,7 +198,7 @@ export default function SearchFilters() {
                     radius: searchRadius,
                     limit: contactLimit,
                     includeCategories: searchMode === 'specific' ? selectedCategories : [],
-                    excludeCategories,
+                    excludeCategories: excludedCategories, // Use the state variable here
                     keywords: keywordsInput,
                     useRandomCategories: searchMode === 'random',
                     randomCategoryCount: searchMode === 'random' ? randomCategoryCount : 0,
@@ -217,7 +214,7 @@ export default function SearchFilters() {
 
             const result = await response.json();
 
-            // Redirect to task monitoring page
+            // Redirect to task monitoring page with proper route
             router.push(`/tasks/${result.taskId}`);
 
         } catch (error) {

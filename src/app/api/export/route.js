@@ -10,14 +10,15 @@ export async function POST(request) {
         const start = Date.now();
 
         const body = await request.json();
-        const { taskId, state, filter, forceUnfiltered } = body;
+        const { taskId, state, filter, forceUnfiltered, isRandomCategoryTask } = body;
 
         // FIXED: Properly log filter values with explicit types for debugging
         logger.info(`Export parameters received: 
             taskId=${taskId !== undefined ? taskId : 'undefined'}, 
             state=${state !== undefined ? state : 'undefined'}, 
             filter=${filter ? JSON.stringify(filter) : 'undefined'}, 
-            forceUnfiltered=${forceUnfiltered !== undefined ? forceUnfiltered : 'undefined'}`);
+            forceUnfiltered=${forceUnfiltered !== undefined ? forceUnfiltered : 'undefined'},
+            isRandomCategoryTask=${isRandomCategoryTask !== undefined ? isRandomCategoryTask : 'undefined'}`);
 
         // Initialize database
         await db.init();
@@ -27,7 +28,7 @@ export async function POST(request) {
             startTime: new Date().toISOString(),
             totalBusinessCount: await exportService.getTotalCount(),
             emailCount: await exportService.countBusinessesWithEmail(),
-            requestParams: { taskId, state, filter, forceUnfiltered }
+            requestParams: { taskId, state, filter, forceUnfiltered, isRandomCategoryTask }
         };
 
         // FIXED: Clean filter to ensure no null values 
@@ -48,14 +49,14 @@ export async function POST(request) {
         let result;
         try {
             if (taskId) {
-                // Export task results
-                logger.info(`Exporting data for task: ${taskId}`);
+                // Export task results - check if it's a random category task
+                logger.info(`Exporting data for task: ${taskId}, isRandomCategoryTask=${isRandomCategoryTask}`);
 
                 // Verify task exists before exporting
                 const task = await exportService.getTaskById(taskId);
                 diagnostics.task = task ? {
                     id: task.id,
-                    searchTerm: task.search_term,
+                    search_term: task.search_term,
                     status: task.status
                 } : null;
 
@@ -69,7 +70,14 @@ export async function POST(request) {
                     );
                 }
 
-                result = await exportService.exportTaskResults(taskId);
+                // Check if this is a random category task
+                const isRandom = isRandomCategoryTask || await exportService.isRandomCategoryTask(taskId);
+                
+                if (isRandom) {
+                    result = await exportService.exportRandomCategoryTaskResults(taskId);
+                } else {
+                    result = await exportService.exportTaskResults(taskId);
+                }
             } else if (state) {
                 // Export by state
                 logger.info(`Exporting data for state: ${state}`);

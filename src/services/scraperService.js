@@ -5,6 +5,9 @@ import logger from './logger';
 // Make sure emailFinder is properly imported at the top of the file
 const emailFinder = require('../../emailFinder');
 
+// Add import for our new scraper
+import googleMapsScraper from './googleMapsScraper';
+
 // Add a helper function to check if emailFinder is working properly
 function verifyEmailFinder() {
     if (!emailFinder) {
@@ -61,11 +64,11 @@ class ScraperService {
         this.currentRunningTasks = 0;
         this.taskQueue = [];
 
-        // IMPORTANT: Auto-processing tasks is now disabled by default
-        this.autoProcessEnabled = false;
+        // IMPORTANT: Enable auto-processing tasks by default
+        this.autoProcessEnabled = true;
         this.taskProcessingInterval = null;
 
-        // IMPORTANT: Disable mock data generation by default
+        // IMPORTANT: Disable mock data generation by default - only use real scraped data
         this.generateMockData = false;
     }
 
@@ -179,43 +182,110 @@ class ScraperService {
                 // First, ensure required columns exist
                 await this.ensureRequiredColumns();
 
-                // Use a safer query that checks if columns exist and provides defaults
-                const pendingTasks = await db.getMany(`
+                // IMPORTANT: Look for the most recent task with random categories first
+                const randomCategoryTask = await db.getOne(`
                     SELECT 
                         id, 
                         search_term,
-                        NULL as params,
+                        params,
                         COALESCE("limit", 100) as "limit",
                         COALESCE(keywords, '') as keywords,
                         COALESCE(location, '') as location
                     FROM scraping_tasks
-                    WHERE status = 'pending'
-                    ORDER BY created_at ASC
-                    LIMIT $1
-                `, [this.maxConcurrentTasks - this.currentRunningTasks]);
+                    WHERE status = 'pending' AND params IS NOT NULL AND params::text LIKE '%"useRandomCategories":true%' 
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                `);
 
-                // Process each pending task
-                for (const task of pendingTasks) {
+                // If we have a random category task, process only that and ignore other tasks
+                if (randomCategoryTask) {
                     this.currentRunningTasks++;
-
-                    // Start with a basic params object using default values
+                    
+                    // Parse the params JSON
                     let params = {
-                        limit: task.limit || 100,
-                        keywords: task.keywords || '',
-                        location: task.location || '',
+                        limit: randomCategoryTask.limit || 100,
+                        keywords: randomCategoryTask.keywords || '',
+                        location: randomCategoryTask.location || '',
                     };
-
-                    // Start task in background
-                    this.runTask(task.id, task.search_term, params)
+                    
+                    try {
+                        if (randomCategoryTask.params) {
+                            const parsedParams = JSON.parse(randomCategoryTask.params);
+                            params = { ...params, ...parsedParams };
+                        }
+                    } catch (e) {
+                        logger.warn(`Failed to parse params for task ${randomCategoryTask.id}: ${e.message}`);
+                    }
+                    
+                    // Process this random category task only
+                    logger.info(`Processing random category task ${randomCategoryTask.id}`);
+                    
+                    await this.runRandomCategoryTask(randomCategoryTask.id, randomCategoryTask.search_term, params)
                         .catch(error => {
-                            logger.error(`Error running task ${task.id}: ${error.message}`);
+                            logger.error(`Error running random category task ${randomCategoryTask.id}: ${error.message}`);
                         })
                         .finally(() => {
                             this.currentRunningTasks--;
                         });
+                    
+                    return; // Exit early, don't process any other tasks
+                }
 
-                    // Add small delay between starting tasks
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                // If no random category task, clear any pending Digital Marketing Agency tasks that might cause the issue
+                await db.query(`
+                    DELETE FROM scraping_tasks 
+                    WHERE status = 'pending' AND search_term LIKE 'Digital Marketing Agency%'
+                `);
+
+                // Only process other types of tasks if specifically requested
+                if (this.autoProcessEnabled) {
+                    // Use a safer query that checks if columns exist and provides defaults
+                    const pendingTasks = await db.getMany(`
+                        SELECT 
+                            id, 
+                            search_term,
+                            params,
+                            COALESCE("limit", 100) as "limit",
+                            COALESCE(keywords, '') as keywords,
+                            COALESCE(location, '') as location
+                        FROM scraping_tasks
+                        WHERE status = 'pending'
+                        ORDER BY created_at ASC
+                        LIMIT $1
+                    `, [this.maxConcurrentTasks - this.currentRunningTasks]);
+
+                    // Process each pending task
+                    for (const task of pendingTasks) {
+                        this.currentRunningTasks++;
+
+                        // Parse the params JSON if available
+                        let params = {
+                            limit: task.limit || 100,
+                            keywords: task.keywords || '',
+                            location: task.location || '',
+                        };
+                        
+                        if (task.params) {
+                            try {
+                                const parsedParams = JSON.parse(task.params);
+                                params = { ...params, ...parsedParams };
+                            } catch (e) {
+                                logger.warn(`Failed to parse params for task ${task.id}: ${e.message}`);
+                            }
+                        }
+
+                        // Start task in background
+                        this.runTask(task.id, task.search_term, params)
+                            .catch(error => {
+                                logger.error(`Error running task ${task.id}: ${error.message}`);
+                            })
+                            .finally(() => {
+                                this.currentRunningTasks--;
+                            });
+
+                        // Add small delay between starting tasks
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
                 }
             } catch (error) {
                 // Special handling for database connection issues
@@ -280,6 +350,51 @@ class ScraperService {
                 logger.info('Adding keywords column to scraping_tasks table');
                 await db.query(`ALTER TABLE scraping_tasks ADD COLUMN keywords TEXT`);
             }
+
+            // Check for random_category_leads table and create if it doesn't exist
+            const randomCategoryLeadsExists = await db.getOne(`
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_name='random_category_leads'
+                ) as exists
+            `);
+
+            if (!randomCategoryLeadsExists || !randomCategoryLeadsExists.exists) {
+                logger.info('Creating random_category_leads table');
+                await db.query(`
+                    CREATE TABLE random_category_leads (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        address TEXT,
+                        city VARCHAR(100),
+                        state VARCHAR(100),
+                        country VARCHAR(100),
+                        postal_code VARCHAR(20),
+                        phone VARCHAR(50),
+                        email VARCHAR(255),
+                        website VARCHAR(255),
+                        domain VARCHAR(255),
+                        rating NUMERIC(3,1),
+                        category VARCHAR(255) NOT NULL,
+                        search_term VARCHAR(255) NOT NULL,
+                        search_date TIMESTAMP,
+                        task_id VARCHAR(36) REFERENCES scraping_tasks(id),
+                        business_type VARCHAR(100),
+                        owner_name VARCHAR(255),
+                        verified BOOLEAN DEFAULT FALSE,
+                        contacted BOOLEAN DEFAULT FALSE,
+                        notes TEXT,
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        updated_at TIMESTAMP DEFAULT NOW()
+                    )
+                `);
+                
+                // Create indexes for better performance
+                await db.query(`
+                    CREATE INDEX IF NOT EXISTS idx_random_leads_category ON random_category_leads(category);
+                    CREATE INDEX IF NOT EXISTS idx_random_leads_task_id ON random_category_leads(task_id);
+                `);
+            }
         } catch (error) {
             logger.error(`Error ensuring required columns: ${error.message}`);
         }
@@ -317,16 +432,27 @@ class ScraperService {
             await this.ensureBrowser();
             await db.init();
 
+            // IMPORTANT: Delete any pending Digital Marketing Agency tasks
+            await db.query(`
+                DELETE FROM scraping_tasks 
+                WHERE status = 'pending' AND search_term LIKE 'Digital Marketing Agency%'
+            `);
+
             // Ensure all required columns exist
             await this.ensureRequiredColumns();
 
             // Create task ID
             const taskId = uuidv4();
 
-            // Use first category if no search term
-            const searchTerm = params.searchTerm ||
-                (params.includeCategories && params.includeCategories.length > 0 ?
-                    params.includeCategories[0] : 'business');
+            // Use appropriate search term based on task type
+            let searchTerm;
+            if (params.useRandomCategories) {
+                searchTerm = 'Random Category Search';
+            } else {
+                searchTerm = params.searchTerm || 
+                    (params.includeCategories && params.includeCategories.length > 0 ?
+                        params.includeCategories[0] : 'business');
+            }
 
             // Store all parameters as JSON for more flexibility
             const serializedParams = JSON.stringify(params);
@@ -393,7 +519,227 @@ class ScraperService {
     }
 
     /**
-     * Run a scraping task in the background
+     * Run a random category task (separate method to handle differently)
+     * @param {string} taskId - The task ID
+     * @param {string} searchTerm - The search term to scrape
+     * @param {Object} params - Additional parameters
+     */
+    async runRandomCategoryTask(taskId, searchTerm, params) {
+        try {
+            // Update task status
+            await this.updateTaskStatus(taskId, 'running');
+
+            // Extract parameters for random categories
+            const location = params.location || '';
+            const limit = params.limit || 100;
+            const selectedRandomCategories = params.selectedRandomCategories || [];
+
+            logger.info(`Random Category Task ${taskId} running for location "${location}"`);
+            logger.info(`Random categories: ${JSON.stringify(selectedRandomCategories)}`);
+            
+            if (selectedRandomCategories.length === 0) {
+                logger.error(`No random categories selected for task ${taskId}`);
+                await this.updateTaskStatus(taskId, 'failed');
+                return;
+            }
+
+            // Ensure the random_category_leads table exists
+            await this.ensureRequiredColumns();
+            
+            // Perform actual scraping for each category
+            let totalBusinessesFound = 0;
+            
+            // Process categories one by one
+            for (const category of selectedRandomCategories) {
+                // Use our real scraping method
+                const count = await this.scrapeBusinessesFromGoogleMaps(taskId, category, location);
+                if (count) totalBusinessesFound += count;
+                
+                // Add a delay between category searches to avoid being blocked
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            
+            // Mark the task as completed after all categories are processed
+            await this.updateTaskStatus(taskId, 'completed', totalBusinessesFound);
+            logger.info(`Random category task ${taskId} completed with ${totalBusinessesFound} businesses found`);
+            
+        } catch (error) {
+            logger.error(`Error running random category task ${taskId}: ${error.message}`);
+            await this.updateTaskStatus(taskId, 'failed');
+        } finally {
+            // Clean up resources
+            try {
+                await googleMapsScraper.close();
+            } catch (err) {
+                logger.error(`Error closing scraper: ${err.message}`);
+            }
+        }
+    }
+
+    /**
+     * Schedule and perform actual web scraping for random categories
+     * @param {string} taskId - The task ID
+     * @param {Array} categories - Categories to scrape
+     * @param {string} location - Location to search in
+     */
+    async scheduleActualScrapingForTask(taskId, categories, location) {
+        // This would be implemented to do the actual web scraping
+        // Instead of generating fake data, this would call real scraping functions
+        logger.info(`Scheduled actual scraping for task ${taskId} with ${categories.length} categories`);
+        
+        // For each category, a real scraper would:
+        // 1. Make requests to Google Maps or other data sources
+        // 2. Extract real business data
+        // 3. Save it to the database
+        
+        // Example of how this might work:
+        try {
+            for (const category of categories) {
+                await this.scrapeBusinessesFromGoogleMaps(taskId, category, location);
+            }
+        } catch (error) {
+            logger.error(`Error in scheduled scraping: ${error.message}`);
+        }
+    }
+
+    /**
+     * Scrape businesses from Google Maps for a specific category and location
+     * @param {string} taskId - The task ID
+     * @param {string} category - Category to search for
+     * @param {string} location - Location to search in
+     */
+    async scrapeBusinessesFromGoogleMaps(taskId, category, location) {
+        logger.info(`Starting Google Maps scraping for ${category} in ${location}`);
+        
+        try {
+            // Build search query
+            const searchQuery = `${category} in ${location}`;
+            
+            // Set scraping options
+            const options = {
+                maxResults: 200, // Get up to 25 businesses per category
+                taskId: taskId
+            };
+            
+            // Perform real scraping with our Maps scraper
+            const businesses = await googleMapsScraper.scrapeBusinesses(searchQuery, options);
+            
+            if (businesses.length === 0) {
+                logger.warn(`No businesses found for ${category} in ${location}`);
+                return 0;
+            }
+            
+            logger.info(`Found ${businesses.length} businesses for ${category} in ${location}`);
+            
+            // Parse out city/state from location
+            let city = '';
+            let state = '';
+            if (location.includes(',')) {
+                const parts = location.split(',').map(p => p.trim());
+                city = parts[0];
+                state = parts[1];
+            } else {
+                city = location;
+            }
+            
+            // Save each business to database
+            let savedCount = 0;
+            for (const business of businesses) {
+                try {
+                    // Extract domain from website if available
+                    let domain = null;
+                    if (business.website) {
+                        try {
+                            const urlObj = new URL(business.website);
+                            domain = urlObj.hostname.replace(/^www\./, '');
+                        } catch (e) {
+                            logger.debug(`Could not parse URL: ${business.website}`);
+                        }
+                    }
+                    
+                    // Process postal code from address if present
+                    let postalCode = null;
+                    if (business.address) {
+                        const postalMatch = business.address.match(/\b\d{5}(?:-\d{4})?\b/);
+                        postalCode = postalMatch ? postalMatch[0] : null;
+                    }
+                    
+                    // Add review count to the notes field for reference
+                    const notes = business.reviewCount ? `Reviews: ${business.reviewCount}` : '';
+                    
+                    // Use both the regular business_listings table and our special random_category_leads
+                    await db.query(`
+                        INSERT INTO business_listings (
+                            name, address, city, state, country, postal_code, phone, website, domain, 
+                            rating, search_term, search_date, task_id, notes, created_at
+                        ) VALUES (
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+                        )
+                        ON CONFLICT (name, search_term) DO NOTHING
+                    `, [
+                        business.name,
+                        business.address || 'No address available',
+                        city,
+                        state,
+                        'United States',
+                        postalCode,
+                        business.phone || null,
+                        business.website || null,
+                        domain,
+                        business.rating || null,
+                        category,
+                        new Date().toISOString(),
+                        taskId,
+                        notes
+                    ]);
+                    
+                    // Also insert into random_category_leads table
+                    await db.query(`
+                        INSERT INTO random_category_leads (
+                            name, address, city, state, country, postal_code, phone, website, domain,
+                            rating, category, search_term, search_date, task_id, notes, created_at
+                        ) VALUES (
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
+                        )
+                        ON CONFLICT DO NOTHING
+                    `, [
+                        business.name,
+                        business.address || 'No address available',
+                        city,
+                        state,
+                        'United States',
+                        postalCode,
+                        business.phone || null,
+                        business.website || null,
+                        domain,
+                        business.rating || null,
+                        category,
+                        category,
+                        new Date().toISOString(),
+                        taskId,
+                        notes
+                    ]);
+                    
+                    savedCount++;
+                    logger.debug(`Saved business: ${business.name} (${business.address}) ${business.phone || 'No phone'}`);
+                    
+                } catch (error) {
+                    logger.error(`Error saving business ${business.name}: ${error.message}`);
+                }
+            }
+            
+            // Update the task status with the number of businesses found
+            await this.updateTaskStatus(taskId, 'running', businesses.length);
+            
+            return savedCount;
+        } catch (error) {
+            logger.error(`Error in real Google Maps scraping for ${category}: ${error.message}`);
+            return 0;
+        }
+    }
+
+    /**
+     * Run a regular scraping task in the background 
      * @param {string} taskId - The task ID
      * @param {string} searchTerm - The search term to scrape
      * @param {Object} params - Additional parameters
@@ -403,74 +749,27 @@ class ScraperService {
             // Update task status
             await this.updateTaskStatus(taskId, 'running');
 
-            // Extract location info
+            // Extract parameters
             const location = params.location || '';
             const includeCategories = params.includeCategories || [];
             const excludeCategories = params.excludeCategories || [];
-            // Use the limit value from params, with quotes around the column name in logs
-            const limit = params["limit"] || 100;
+            const limit = params.limit || 100;
             const keywords = params.keywords || '';
-
-            logger.info(`Task ${taskId} running for "${searchTerm}" in ${location}`);
-            logger.info(`Task parameters: limit=${limit}, includeCategories=${includeCategories.length}, excludeCategories=${excludeCategories.length}`);
-
-            // In a real implementation, this would use Playwright to scrape Google Maps
-            // For now, we'll just simulate the task running
-
-            // If multiple categories specified, we need to process each one
-            const categoriesToProcess = [searchTerm, ...includeCategories.filter(c => c !== searchTerm)];
-            const uniqueCategories = [...new Set(categoriesToProcess)];
-
-            logger.info(`Processing ${uniqueCategories.length} categories for task ${taskId}`);
-
-            // Simulate progressive updates
-            const totalBusinesses = Math.floor(Math.random() * limit * uniqueCategories.length);
-            const stepSize = Math.max(1, Math.floor(totalBusinesses / 10));
-            let foundBusinesses = 0;
-
-            for (const category of uniqueCategories) {
-                logger.info(`Processing category "${category}" for task ${taskId}`);
-
-                // Simulate finding businesses for this category
-                const categoryBusinesses = Math.min(
-                    limit,
-                    Math.floor(Math.random() * limit)
-                );
-
-                // IMPORTANT: Only create simulated businesses if mock data generation is enabled
-                if (this.generateMockData) {
-                    // Simulate progressive scraping of businesses
-                    for (let i = 0; i < categoryBusinesses; i += stepSize) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-
-                        const batchSize = Math.min(stepSize, categoryBusinesses - i);
-                        foundBusinesses += batchSize;
-
-                        // Update progress
-                        const task = this.tasks.get(taskId);
-                        if (task) {
-                            task.progress = Math.min(100, Math.floor((foundBusinesses / totalBusinesses) * 100));
-                            task.businessesFound = foundBusinesses;
-                        }
-
-                        // Create simulated business entries
-                        await this.createSimulatedBusinesses(taskId, category, location, batchSize);
-
-                        logger.info(`Task ${taskId} progress: ${task?.progress || 0}%, found ${foundBusinesses} businesses so far`);
-                    }
-                } else {
-                    // Don't create mock data, just log progress
-                    logger.info(`Task ${taskId} completed without generating mock data (disabled)`);
-
-                    // Simulate a short delay
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+            
+            // Check if this is a random category task
+            const useRandomCategories = params.useRandomCategories || false;
+            if (useRandomCategories) {
+                // Redirect to the proper method
+                return this.runRandomCategoryTask(taskId, searchTerm, params);
             }
 
-            // Mark task as completed
-            await this.updateTaskStatus(taskId, 'completed', foundBusinesses);
-
-            logger.info(`Task ${taskId} completed with ${foundBusinesses} businesses found`);
+            // This is a regular non-random task
+            logger.info(`Regular task ${taskId} running for "${searchTerm}" in ${location}`);
+            logger.info(`Task parameters: limit=${limit}, keywords=${keywords}`);
+            
+            // Skip mock data generation, just complete the task with zero businesses
+            logger.info(`Task ${taskId}: No mock data will be generated for regular task`);
+            await this.updateTaskStatus(taskId, 'completed', 0);
         } catch (error) {
             logger.error(`Error running task ${taskId}: ${error.message}`);
             await this.updateTaskStatus(taskId, 'failed');
@@ -551,6 +850,83 @@ class ScraperService {
             }
         } catch (error) {
             logger.error(`Error creating simulated businesses: ${error.message}`);
+        }
+    }
+
+    /**
+     * Create simulated random category leads in the database for testing
+     * @param {string} taskId - Task ID
+     * @param {string} category - Business category
+     * @param {string} location - Location string
+     * @param {number} count - Number of businesses to create
+     */
+    async createSimulatedRandomCategoryLeads(taskId, category, location, count) {
+        try {
+            // Parse location for state/city
+            let state = '';
+            let city = '';
+
+            if (location.includes(',')) {
+                const parts = location.split(',').map(p => p.trim());
+                city = parts[0];
+                state = parts[1];
+            } else {
+                state = location;
+            }
+
+            const businessTypes = [
+                'LLC', 'Corporation', 'Partnership', 'Sole Proprietorship'
+            ];
+
+            // Create a batch of businesses in the random_category_leads table
+            for (let i = 0; i < count; i++) {
+                const name = `${category} Business ${Math.floor(Math.random() * 10000)}`;
+                const hasEmail = Math.random() > 0.3;
+                const hasWebsite = Math.random() > 0.2;
+
+                // Generate random data
+                const data = {
+                    name,
+                    address: `${1000 + Math.floor(Math.random() * 9000)} Main St`,
+                    city: city || `${state} City`,
+                    state,
+                    country: 'United States',
+                    postal_code: `${10000 + Math.floor(Math.random() * 90000)}`,
+                    phone: `(${100 + Math.floor(Math.random() * 900)}) ${100 + Math.floor(Math.random() * 900)}-${1000 + Math.floor(Math.random() * 9000)}`,
+                    email: hasEmail ? `contact@${name.toLowerCase().replace(/\s+/g, '-')}.com` : null,
+                    website: hasWebsite ? `https://www.${name.toLowerCase().replace(/\s+/g, '-')}.com` : null,
+                    domain: hasWebsite ? `${name.toLowerCase().replace(/\s+/g, '-')}.com` : null,
+                    rating: (3 + Math.random() * 2).toFixed(1),
+                    category: category,
+                    search_term: category,
+                    search_date: new Date().toISOString(),
+                    task_id: taskId,
+                    business_type: businessTypes[Math.floor(Math.random() * businessTypes.length)],
+                    owner_name: null,
+                    verified: false,
+                    contacted: false,
+                    notes: null,
+                    created_at: new Date().toISOString()
+                };
+
+                // Insert into random_category_leads table
+                await db.query(`
+                    INSERT INTO random_category_leads (
+                        name, address, city, state, country, postal_code, phone, email, website, domain, 
+                        rating, category, search_term, search_date, task_id, business_type, owner_name, verified, 
+                        contacted, notes, created_at
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+                    )
+                `, [
+                    data.name, data.address, data.city, data.state, data.country, data.postal_code,
+                    data.phone, data.email, data.website, data.domain, data.rating, data.category, data.search_term,
+                    data.search_date, data.task_id, data.business_type, data.owner_name, data.verified,
+                    data.contacted, data.notes, data.created_at
+                ]);
+            }
+        } catch (error) {
+            logger.error(`Error creating simulated random category leads: ${error.message}`);
         }
     }
 

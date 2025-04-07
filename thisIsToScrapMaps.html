@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Scraper Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .note {
+            background-color: #fffde7;
+            padding: 15px;
+            border-left: 4px solid #ffd600;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google Maps Business Scraper</h1>
+    
+    <p>This implementation demonstrates how to scrape business data from Google Maps using Puppeteer.</p>
+    
+    <div class="note">
+        <strong>Note:</strong> This scraper is for educational purposes. Always respect websites' terms of service and robots.txt files.
+        Web scraping may violate terms of service of some websites and could potentially lead to IP blocking.
+    </div>
+    
+    <h2>Implementation Example</h2>
+    
+    <p>The scraper performs the following steps:</p>
+    <ol>
+        <li>Initializes a Puppeteer browser with stealth plugin to avoid detection</li>
+        <li>Navigates to Google Maps</li>
+        <li>Searches for a specific category in a location</li>
+        <li>Scrolls through results to load more businesses</li>
+        <li>Extracts business information (name, address, phone, rating, etc.)</li>
+        <li>Saves data to the database</li>
+    </ol>
+    
+    <h2>Sample Code</h2>
+    
+    <pre><code>// Example of how to use the scraper
+const googleMapsScraper = require('./services/googleMapsScraper');
+
+async function scrapeCategory(category, location) {
+  try {
+    await googleMapsScraper.initialize();
+    
+    const searchQuery = `${category} in ${location}`;
+    const options = { maxResults: 20 };
+    
+    const businesses = await googleMapsScraper.scrapeBusinesses(searchQuery, options);
+    
+    console.log(`Found ${businesses.length} businesses for ${category} in ${location}`);
+    console.log(businesses);
+    
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+  } finally {
+    await googleMapsScraper.close();
+  }
+}
+
+// Example usage
+scrapeCategory('Coffee Shops', 'New York, NY');</code></pre>
+    
+    <h2>Example Data Structure</h2>
+    
+    <p>The scraper extracts data in the following format:</p>
+    
+    <pre><code>[
+  {
+    "name": "Starbucks",
+    "rating": 4.2,
+    "address": "123 Main St, New York, NY 10001",
+    "phone": "(212) 555-1234",
+    "website": "https://www.starbucks.com/store-locator/store/12345"
+  },
+  {
+    "name": "Blue Bottle Coffee",
+    "rating": 4.5,
+    "address": "456 Broadway, New York, NY 10013",
+    "phone": "(212) 555-5678",
+    "website": "https://bluebottlecoffee.com/cafes/rockefeller-center"
+  }
+]</code></pre>
+    
+    <div class="note">
+        <p><strong>Important:</strong> Add reasonable delays between requests and consider implementing:</p>
+        <ul>
+            <li>Proxy rotation to prevent IP blocking</li>
+            <li>User agent rotation</li>
+            <li>Random delays between actions</li>
+            <li>Session cookies management</li>
+        </ul>
+    </div>
+</body>
+</html>
+<div class="m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd" aria-label="Resultados de Couture Store - New York. NY"
+    role="feed" tabindex="-1" style="">
+    <div class="m6QErb XiKgde z7i0C " style="">
+        <div class="fp2VUc" aria-roledescription="carousel" aria-label="Filtros disponibles para esta búsqueda"
+            role="region"
+            jsaction="keydown:pane.wfvdle27.navigate; mousedown:pane.wfvdle27.dragCards; mousewheel:pane.wfvdle27.navigate wheel:pane.wfvdle27.navigate; DOMMouseScroll:pane.wfvdle27.navigate; focus:pane.wfvdle27.focus; mousemove:pane.wfvdle27.focus"
+            jslog="127728;">
+            <div jslog="127734; track:click;"></div>
+            <div class="rHNip cRLbXd" style="min-height: 0px;">
+                <div class="GXRbod" style="width: 4px;"></div>
+                <div class="dryRY ">
+                    <div class="KNfEk siaXSd ODcthf aUjao"><button class="e2moi" aria-haspopup="menu"
+                            jsaction="pane.wfvdle28;keydown:ripple.nested;mousedown:ripple.nested;ptrdown:ripple.nested"
+                            jslog="8292; track:click;">
+                            <div class="tXNTee waIsr VbYL9 ">
+                                <div class="L6Bbsd"></div>
+                                <div class="OyjIsf"></div><span class="uEubGf fontTitleSmall">Clasificación</span><span
+                                    class="drGLxe google-symbols" aria-hidden="true" style="font-size: 24px;"></span>
+                            </div>
+                        </button></div>
+                    <div class="KNfEk siaXSd ODcthf aUjao"><button class="e2moi" aria-haspopup="dialog"
+                            jsaction="pane.wfvdle29;keydown:ripple.nested;mousedown:ripple.nested;ptrdown:ripple.nested"
+                            jslog="8402; track:click;">
+                            <div class="tXNTee waIsr VbYL9 ">
+                                <div class="L6Bbsd"></div>
+                                <div class="OyjIsf"></div><span class="uEubGf fontTitleSmall">Horas</span><span
+                                    class="drGLxe google-symbols" aria-hidden="true" style="font-size: 24px;"></span>
+                            </div>
+                        </button></div>
+                    <div class=" ODcthf aUjao"><button class="e2moi"
+                            jsaction="pane.wfvdle30;keydown:ripple.nested;mousedown:ripple.nested;ptrdown:ripple.nested"
+                            jslog="37790; track:click;">
+                            <div class="tXNTee waIsr VbYL9 ">
+                                <div class="L6Bbsd"></div>
+                                <div class="OyjIsf"></div><span class="k48Abe google-symbols" aria-hidden="true"
+                                    style="font-size: 18px;"></span><span class="uEubGf fontTitleSmall">Todos los
+                                    filtros</span>
+                            </div>
+                        </button></div>
+                </div>
+                <div class="GXRbod" style="width: 0px;"></div>
+            </div>
+            <div jslog="127730; track:click;"></div>
+            <div class="TSAyb"></div>
+        </div>
+    </div>
+    <div class="JrN27d SuV3fd Zjt37e TGiyyc ">
+        <div class="MFHMle y2jPs"></div>
+        <div class="Ntshyc">
+            <div class="L1xEbb">
+                <h1 class="fontTitleLarge IFMGgb">Resultados</h1>
+                <h1 class="LoqBob IFMGgb g7Eb3e"></h1>
+                <div class="whqM4e">
+                    <div jslog="151371; track:click;" class="iwhWtc x9tric" data-callout-id="ucc-0">
+                        <div class="PSwX3c"></div>
+                        <div class="zXYuJe Rot3te"><span class="VfPpkd-suEOdc-sM5MNb-OWXEXe-nzrxxc"
+                                data-is-tooltip-wrapper="true">
+                                <div class="VfPpkd-dgl2Hf-ppHlrf-sM5MNb" data-is-touch-wrapper="true"><button
+                                        class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-INsAgc VfPpkd-LgbsSe-OWXEXe-icon-M1Soyc VfPpkd-LgbsSe-OWXEXe-dgl2Hf Rj2Mlf OLiIxf PDpWxe LQeN7 s73B3c MyHLpd wphPJc Q8G3mf"
+                                        jscontroller="soHxf"
+                                        jsaction="click:cOuCgd; mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue; touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc; touchcancel:JMtRjd; focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef;mlnRJb:fLiPzd"
+                                        data-idom-class="Rj2Mlf OLiIxf PDpWxe LQeN7 s73B3c MyHLpd wphPJc Q8G3mf"
+                                        aria-label="Más información sobre la divulgación legal de las opiniones públicas en Google&nbsp;Maps"
+                                        data-tooltip-enabled="true" data-tooltip-is-rich="true"
+                                        data-tooltip-is-persistent="true" data-tooltip-id="ucc-0"
+                                        data-tooltip-with-caret="true" data-tooltip-with-caret-position="11">
+                                        <div class="VfPpkd-Jh9lGc"></div>
+                                        <div class="VfPpkd-J1Ukfc-LhBDec"></div>
+                                        <div class="VfPpkd-RLmnJb"></div><span class="notranslate VfPpkd-kBDsod"
+                                            aria-hidden="true"><span class="google-symbols OazX1c" aria-hidden="true"
+                                                style="font-size: 18px;"></span></span><span jsname="V67aGc"
+                                            class="VfPpkd-vQzf8d"></span>
+                                    </button></div>
+                                <div jsshadow="" jsaction="BfpAHf:TCTP9d;Nwyqre:DsZxZc; transitionend:e204de"
+                                    jscontroller="HmEm0" data-title-id-disregard="ucc-1" id="ucc-0"
+                                    class="VfPpkd-suEOdc VfPpkd-suEOdc-OWXEXe-nzrxxc ziykHb TA5ace  d1Bfob undefined"
+                                    aria-hidden="true" role="dialog" data-mdc-tooltip-persistent="true" tabindex="-1"
+                                    data-mdc-tooltip-has-caret="true">
+                                    <div class="VfPpkd-z59Tgd-OiiCO">
+                                        <div jsname="ebgt1d" class="VfPpkd-z59Tgd"><span aria-hidden="true"
+                                                class="VfPpkd-BFbNVe-bF1uUb NZp2ef"></span>
+                                            <div jsslot="" class="VfPpkd-IqDDtd VfPpkd-a1tyJ-content">
+                                                <div class="mF2nKf">
+                                                    <div class="EFUAFd">Algunos resultados de la búsqueda de hoteles y
+                                                        alquileres de vacaciones podrían personalizarse según tu
+                                                        actividad de navegación y tus búsquedas recientes en Google, así
+                                                        como las confirmaciones de viaje que se envían a tu cuenta de
+                                                        Gmail.</div><br>
+                                                    <div class="EFUAFd">Los precios provienen de socios de Google.</div>
+                                                    <br>
+                                                    <div class="EFUAFd">Todas las opiniones sobre alquileres de
+                                                        vacaciones y algunas opiniones sobre hoteles provienen de sitios
+                                                        de viajes de terceros. Las opiniones sobre alquileres de
+                                                        vacaciones se muestran como calificaciones combinadas de las
+                                                        opiniones de terceros vinculadas. Google no verifica las
+                                                        opiniones, pero sí revisa que el contenido no sea falso, y lo
+                                                        quita cuando lo identifica como tal en las opiniones en Google.
+                                                        Para consultar las políticas de opiniones de sitios de viajes de
+                                                        terceros, visita sus sitios.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="VfPpkd-Djsh7e-XxIAqe-ma6Yeb"><span aria-hidden="true"
+                                                class="VfPpkd-BFbNVe-bF1uUb NZp2ef"></span></div>
+                                        <div class="VfPpkd-Djsh7e-XxIAqe-bottom"><span aria-hidden="true"
+                                                class="VfPpkd-BFbNVe-bF1uUb NZp2ef"></span></div>
+                                    </div>
+                                </div>
+                            </span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="wuvLZe fontBodyMedium"></div>
+        </div>
+        <div class="MFHMle">
+            <div class="kiXRrd">
+                <div class=""><button class="M77dve " aria-label="Compartir" jslog="236659;track:click;mutable:true;"
+                        jsaction="pane.wfvdle31">
+                        <div class="BgrMEd mRai6b cYlvTc ">
+                            <div class="OyjIsf zemfqc"></div><span class="bYkqId google-symbols PHazN"
+                                aria-hidden="true" style="font-size: 20px;"></span><span
+                                class="wNNZR fontTitleSmall">Compartir</span>
+                        </div>
+                    </button></div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle32;mouseout:pane.wfvdle32"><a class="hfpxzc"
+                aria-label="Proenza Schouler"
+                href="https://www.google.com/maps/place/Proenza+Schouler/data=!4m7!3m6!1s0x89c25903fb4be609:0x9edaf722f67865ce!8m2!3d40.7251722!4d-73.9984311!16s%2Fg%2F11ybxlq228!19sChIJCeZL-wNZwokRzmV49iL32p4?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle32;focus:pane.wfvdle32;blur:pane.wfvdle32;auxclick:pane.wfvdle32;keydown:pane.wfvdle32;clickmod:pane.wfvdle32"
+                jslog="18538;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1FrUm9JQ3lnRyIsbnVsbCxudWxsLFtudWxsLG51bGwsW1syNDJdXV1d"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  Jv9l1d">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd">
+                    <div class="OcdnDb ">
+                        <h1 class="kpih0e f8ia3c uvopNe" aria-label="Patrocinado" style=""><span class="jHLihd lV5Ihd"
+                                jslog="198205;">Patrocinado</span><span class="cmwwHe"><span><button
+                                        aria-haspopup="true" class="geckTe FcJlLe" jsaction="pane.wfvdle34"
+                                        jslog="198204; track:click;" aria-label="¿Por qué este anuncio?"
+                                        title="¿Por qué este anuncio?"><span class="google-symbols" aria-hidden="true"
+                                            style="font-size: 16px;"></span></button></span></span></h1>
+                    </div>
+                </div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe Jv9l1d">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Proenza Schouler</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="5.0 estrellas 1 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">5.0</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div><span class="UY7F9"
+                                                        aria-hidden="true">(1)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span>153 Mercer St</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-420-7300</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipP9EUCBYkfAsCRxol50aCTM0P449XOSDz8U9SGQ=w80-h92-p-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 97px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div>
+                        <div class="ltJjte khgPLe zZpjAd OQCnxd" jslog="103723; track:click;">
+                            <div class="OyjIsf "></div><a class="bm892c" target="_blank"
+                                aria-label="Anuncio·Proenza Schouler® White Label·White Label Spring 2025 has arrived. Discover the <b>New</b> Collection.·Visitar sitio·proenzaschouler.com"
+                                href="//www.googleadservices.com/pagead/aclk?sa=L&amp;ai=DChcSEwi04onM8saMAxWtmloFHZ7yBWwYABABGgJ2dQ&amp;co=1&amp;gclid=Cj0KCQjw782_BhDjARIsABTv_JBywTA4tZMmlSB3SHV3XkcQxXneoKQTEMRZOCbgRAkhED7C24n87MEaAqQnEALw_wcB&amp;ohost=www.google.com&amp;cid=CAESVeD2-g-J2ibwJOfOhKCY95VV9mQovw8Mxv6WQB75pa2LWIT8vcO5EAHTuffNbak60VVm2iMyQ0JKFFz6bZ26OBGRY-Hijpk35NEj8DyH6kBKHvEGaEA&amp;sig=AOD64_0iXH3mLjUC1ZgCSBV633gM-ijnkQ&amp;adurl=&amp;rct=j"
+                                style="text-decoration: none;">
+                                <div class="btQlb">
+                                    <div class="n1toJb">
+                                        <div>
+                                            <div class="LDHnMb NlVald">Proenza Schouler® White Label</div>
+                                            <div class="c2ePGf fontBodySmall">White Label Spring 2025 has arrived.
+                                                Discover the <b>New</b> Collection.</div>
+                                        </div>
+                                        <div class="SwWuVb">
+                                            <div class="zFq9yb"><span class="NlVald">Visitar sitio</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle35;mouseout:pane.wfvdle35"><a class="hfpxzc"
+                aria-label="Edikted"
+                href="https://www.google.com/maps/place/Edikted/data=!4m7!3m6!1s0x6227674f54148e0f:0x87a063098ba95a4!8m2!3d40.7225839!4d-73.9988276!16s%2Fg%2F11sq5kznkp!19sChIJD44UVE9nJ2IRpJW6mDAGegg?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle35;focus:pane.wfvdle35;blur:pane.wfvdle35;auxclick:pane.wfvdle35;keydown:pane.wfvdle35;clickmod:pane.wfvdle35"
+                jslog="18538;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1FrUm9JVkNnSCIsbnVsbCxudWxsLFtudWxsLG51bGwsW1syMjhdXV1d"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  Jv9l1d">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd">
+                    <div class="OcdnDb ">
+                        <h1 class="kpih0e f8ia3c uvopNe" aria-label="Patrocinado" style=""><span class="jHLihd lV5Ihd"
+                                jslog="198205;">Patrocinado</span><span class="cmwwHe"><span><button
+                                        aria-haspopup="true" class="geckTe FcJlLe" jsaction="pane.wfvdle37"
+                                        jslog="198204; track:click;" aria-label="¿Por qué este anuncio?"
+                                        title="¿Por qué este anuncio?"><span class="google-symbols" aria-hidden="true"
+                                            style="font-size: 16px;"></span></button></span></span></h1>
+                    </div>
+                </div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe Jv9l1d">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Edikted</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="3.6 estrellas 99 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">3.6</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(99)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>518 Broadway</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        8 p.m.</span></span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipNf9BwFQEdR6TjDU4Zd58BZ1-iOUzZ0xKdZUvKJ=w80-h92-p-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 97px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div>
+                        <div class="ltJjte khgPLe zZpjAd OQCnxd" jslog="103723; track:click;">
+                            <div class="OyjIsf "></div><a class="bm892c" target="_blank"
+                                aria-label="Anuncio·Limited Time Sale·<b>Shop</b> The Items You Love. 50-80% Off Hurry, Before Everything Is Gone. *Compare - at prices·Visitar sitio·edikted.com"
+                                href="//www.googleadservices.com/pagead/aclk?sa=L&amp;ai=DChcSEwi04onM8saMAxWtmloFHZ7yBWwYABAAGgJ2dQ&amp;co=1&amp;gclid=Cj0KCQjw782_BhDjARIsABTv_JBHNdrajVD583AT-AQYX2RyCQMcoaGlnG2OAPAPQgCIFTB3yh49DTgaApo5EALw_wcB&amp;ohost=www.google.com&amp;cid=CAESVeD2-g-J2ibwJOfOhKCY95VV9mQovw8Mxv6WQB75pa2LWIT8vcO5EAHTuffNbak60VVm2iMyQ0JKFFz6bZ26OBGRY-Hijpk35NEj8DyH6kBKHvEGaEA&amp;sig=AOD64_0TCKRoKujG7bs2qmo7lQoGAzNAkg&amp;adurl=&amp;rct=j"
+                                style="text-decoration: none;">
+                                <div class="btQlb">
+                                    <div class="n1toJb">
+                                        <div>
+                                            <div class="LDHnMb NlVald">Limited Time Sale</div>
+                                            <div class="c2ePGf fontBodySmall"><b>Shop</b> The Items You Love. 50-80% Off
+                                                Hurry, Before Everything Is Gone. *Compare - at prices</div>
+                                        </div>
+                                        <div class="SwWuVb">
+                                            <div class="zFq9yb"><span class="NlVald">Visitar sitio</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle38;mouseout:pane.wfvdle38"><a class="hfpxzc"
+                aria-label="NYC Glamour Couture"
+                href="https://www.google.com/maps/place/NYC+Glamour+Couture/data=!4m7!3m6!1s0x89c25f3b8ed7e69f:0x45ec30e702ac421!8m2!3d40.7616043!4d-73.9171293!16s%2Fg%2F11b7rncy6t!19sChIJn-bXjjtfwokRIcQqcA7DXgQ?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle38;focus:pane.wfvdle38;blur:pane.wfvdle38;auxclick:pane.wfvdle38;keydown:pane.wfvdle38;clickmod:pane.wfvdle38"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJb0FFb0NBIixudWxsLDBd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">NYC Glamour Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.3 estrellas 302 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.3</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(302)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>30-98 Steinway St</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6:30 p.m. ⋅ Abre
+                                                        a las 10:30 a.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    917-579-9080</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB9xJ7N-7kA1PbDVMaNbzkPu7Hf7ebMfrNIzjfGaeOedmV-SFV5FjoAh30j2_mw5H91Wb3AR9I96NviPBQoS4e2vtvtlkNtAf2ZHibO80480VZQBMfpoiebAXAcWi1t1lgxClRANAg=w163-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 149px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Retiro en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Entrega a domicilio</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle41;mouseout:pane.wfvdle41"><a class="hfpxzc"
+                aria-label="B&amp;B Couture"
+                href="https://www.google.com/maps/place/B%26B+Couture/data=!4m7!3m6!1s0x89c259a34106e325:0xabdc660b8042d373!8m2!3d40.7470502!4d-73.9859718!16s%2Fg%2F11btsvh0mm!19sChIJJeMGQaNZwokRc9NCgAtm3Ks?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle41;focus:pane.wfvdle41;blur:pane.wfvdle41;auxclick:pane.wfvdle41;keydown:pane.wfvdle41;clickmod:pane.wfvdle41"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJekFFb0NRIixudWxsLDFd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">B&amp;B Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.6 estrellas 376 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.6</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(376)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>312 5th Ave FL 5</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span class="UsdlK">+1 917-553-6656</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB9Ks7NVokKpElRHbZGRNhLFED9PbdSwqbbBJlrE_vY3NKa95x2p8qj_jpGLfXA1y_THDX0WUvDihlCQkpH9Krj0igO1SCbIBcYJG-QKih8Fww3ezfY8muHcgWSIMz2wO9f30kY=w97-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 89px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Compras en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Retiros en la puerta</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle44;mouseout:pane.wfvdle44"><a class="hfpxzc"
+                aria-label="New York Vintage Inc"
+                href="https://www.google.com/maps/place/New+York+Vintage+Inc/data=!4m7!3m6!1s0x89c259a51ac40369:0xb01fcba6f5f5a620!8m2!3d40.744631!4d-73.992619!16s%2Fg%2F1th5_qjy!19sChIJaQPEGqVZwokRIKb19abLH7A?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle44;focus:pane.wfvdle44;blur:pane.wfvdle44;auxclick:pane.wfvdle44;keydown:pane.wfvdle44;clickmod:pane.wfvdle44"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJN2dFb0NnIixudWxsLDJd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">New York Vintage Inc</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.0 estrellas 60 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.0</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(60)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa vintage</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>117 W 25th St</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6 p.m. ⋅ Abre a
+                                                        las 12 p.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-647-1107</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipO2New4ZLKmsAmLHeFoRygG6HNbxL5BXpCxv6MZ=w122-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 113px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Compras en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Retiro en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Entrega a domicilio</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle47;mouseout:pane.wfvdle47"><a class="hfpxzc"
+                aria-label="ETRO Boutique"
+                href="https://www.google.com/maps/place/ETRO+Boutique/data=!4m7!3m6!1s0x89c2598ea177fddd:0x417946d43e41abb2!8m2!3d40.723942!4d-74.000397!16s%2Fg%2F1tmcn4dd!19sChIJ3f13oY5ZwokRsqtBPtRGeUE?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle47;focus:pane.wfvdle47;blur:pane.wfvdle47;auxclick:pane.wfvdle47;keydown:pane.wfvdle47;clickmod:pane.wfvdle47"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJbUFJb0N3IixudWxsLDNd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">ETRO Boutique</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.7 estrellas 10 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.7</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(10)</span>
+                                                </span></span><span> <span aria-hidden="true">·</span> <span
+                                                    aria-label="Muy costoso" role="img">$$$$</span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>89 Street, Greene St</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    646-329-6929</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB9EOGfOoSRtaWh7SYMjn9J4thEBl8ndDluondIoOXS-ms7w7SMVhdq9COWWfWkGzvgvbXXqD0FH96RJdUXCI7W8VYLeoHyzlazP1_m-Wuz4ofpq6MuNam-IKZ9QzWwlciilAvNm=w80-h106-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 111px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle49;mouseout:pane.wfvdle49"><a class="hfpxzc"
+                aria-label="CHIC COUTURE"
+                href="https://www.google.com/maps/place/CHIC+COUTURE/data=!4m7!3m6!1s0x89c25c2615ec06c1:0x9c9a1a5e04b86568!8m2!3d40.7003808!4d-73.9019156!16s%2Fg%2F1tdnxtzz!19sChIJwQbsFSZcwokRaGW4BF4ampw?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle49;focus:pane.wfvdle49;blur:pane.wfvdle49;auxclick:pane.wfvdle49;keydown:pane.wfvdle49;clickmod:pane.wfvdle49"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJd0FJb0RBIixudWxsLDRd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">CHIC COUTURE</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.4 estrellas 162 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.4</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(162)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span>5746 Myrtle Ave</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    718-386-0820</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB_f1SOrcgcK1PyhoQgZ38JLRVLv-N3GtwjdAX_UipomNW4uYYHdEAnygRcvguuV4MzWaEpjW1rMJAdyPwIwwZlCn90BGQySW8NV8sIBBFZo3wgF5l5M2V1x2uYOl6OBaskCipse2g=w80-h106-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 111px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Servicios en el lugar</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle53;mouseout:pane.wfvdle53"><a class="hfpxzc"
+                aria-label="Jenny Couture"
+                href="https://www.google.com/maps/place/Jenny+Couture/data=!4m7!3m6!1s0x89c259ace645e177:0x2be6c718cd715e63!8m2!3d40.7542826!4d-73.9911294!16s%2Fg%2F1vy7hhcs!19sChIJd-FF5qxZwokRY15xzRjH5is?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle53;focus:pane.wfvdle53;blur:pane.wfvdle53;auxclick:pane.wfvdle53;keydown:pane.wfvdle53;clickmod:pane.wfvdle53"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJNWdJb0RRIixudWxsLDVd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Jenny Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.6 estrellas 9 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.6</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(9)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Modista</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>262 W 38th St Suite
+                                                    707</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6:30 p.m. ⋅ Abre
+                                                        a las 9:30 a.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-997-4102</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB86sTMl0hZvOsdcjSswXAwreGLHkxujdLGJsQ-W8CfMbfJHeJyLBymSwFgdHbx8IvcGpXop_JfxrpQGabp7KJAwGo0LnBXEaUAcNSXFklJEMgxAvu4LDiRDXSu3CN0lUaX5TeZu=w80-h100-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 105px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle55;mouseout:pane.wfvdle55"><a class="hfpxzc"
+                aria-label="NYC Dressmaker - Unique Wedding Dresses - FREE Consult"
+                href="https://www.google.com/maps/place/NYC+Dressmaker+-+Unique+Wedding+Dresses+-+FREE+Consult/data=!4m7!3m6!1s0x89c259bd3863e9cf:0x6a469415c9248c62!8m2!3d40.73842!4d-73.9956571!16s%2Fg%2F11fzf6ytwx!19sChIJz-ljOL1ZwokRYowkyRWURmo?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle55;focus:pane.wfvdle55;blur:pane.wfvdle55;auxclick:pane.wfvdle55;keydown:pane.wfvdle55;clickmod:pane.wfvdle55"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJaXdNb0RnIixudWxsLDZd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">NYC Dressmaker - Unique Wedding Dresses -
+                                            FREE Consult</div> <span class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="5.0 estrellas 21 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">5.0</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div><span class="UY7F9"
+                                                        aria-hidden="true">(21)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de moda de alta
+                                                    costura</span></span><span> <span aria-hidden="true">·</span>
+                                                <span>54 W 16th St</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6:30 p.m. ⋅ Abre
+                                                        a las 10 a.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-929-2713</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipNRS_mskjfvnVhcX-aewqDy2O4ZBSiCn5qNg16f=w80-h106-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 111px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Citas en línea</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle58;mouseout:pane.wfvdle58"><a class="hfpxzc"
+                aria-label="Aphrodite Couture"
+                href="https://www.google.com/maps/place/Aphrodite+Couture/data=!4m7!3m6!1s0x89c2f684a8b09ee1:0x2fbd7f63c2b5d4ab!8m2!3d40.837533!4d-73.9420073!16s%2Fg%2F1264fz2z1!19sChIJ4Z6wqIT2wokRq9S1wmN_vS8?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle58;focus:pane.wfvdle58;blur:pane.wfvdle58;auxclick:pane.wfvdle58;keydown:pane.wfvdle58;clickmod:pane.wfvdle58"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJdHdNb0R3IixudWxsLDdd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Aphrodite Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.4 estrellas 14 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.4</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(14)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>3894 Broadway</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        8 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-781-3028</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB-VIhjo2rj3DERpKW2VBUIgbLviqqHj4a6NRgxV6jLHBG4DMy9oOropyLXItBfNhEssd0iW69ytp_OXLP9soVBa0plA5MtMWRFxGRrPJ7-rv2RmdkrSd4JEfqyamWIUAEIDPYCJ=w92-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle60;mouseout:pane.wfvdle60"><a class="hfpxzc"
+                aria-label="CARNIVEL FASHION HOUSE"
+                href="https://www.google.com/maps/place/CARNIVEL+FASHION+HOUSE/data=!4m7!3m6!1s0x89c2598b0e148b4b:0x31cb5d7b416d02ac!8m2!3d40.7219852!4d-74.0044008!16s%2Fg%2F11c55j5y10!19sChIJS4sUDotZwokRrAJtQXtdyzE?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle60;focus:pane.wfvdle60;blur:pane.wfvdle60;auxclick:pane.wfvdle60;keydown:pane.wfvdle60;clickmod:pane.wfvdle60"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJM0FNb0VBIixudWxsLDhd"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">CARNIVEL FASHION HOUSE</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="5.0 estrellas 1 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">5.0</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div><span class="UY7F9"
+                                                        aria-hidden="true">(1)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de moda de alta
+                                                    costura</span></span><span> <span aria-hidden="true">·</span>
+                                                <span>310 W Broadway</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        8 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+61 412 444
+                                                    148</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipMbwffnWeMcXX3X1YAcpZVxFJk3d3CbeCoR4Gzq=w80-h106-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 111px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Servicios en el lugar</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle63;mouseout:pane.wfvdle63"><a class="hfpxzc"
+                aria-label="La Mode Royale"
+                href="https://www.google.com/maps/place/La+Mode+Royale/data=!4m7!3m6!1s0x89c259cedb201b8d:0xd2fa025857e781eb!8m2!3d40.7623774!4d-73.9790341!16s%2Fg%2F11fhtm62gv!19sChIJjRsg285ZwokR64HnV1gC-tI?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle63;focus:pane.wfvdle63;blur:pane.wfvdle63;auxclick:pane.wfvdle63;keydown:pane.wfvdle63;clickmod:pane.wfvdle63"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJZ2dRb0VRIixudWxsLDld"></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">La Mode Royale</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.4 estrellas 14 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.4</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(14)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>1335 6th Ave</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    646-863-2024</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipN77TVTK0izZaJHBoy_fvTjuWmi_G6HcXwbls1i=w167-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 152px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Entrega a domicilio</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle66;mouseout:pane.wfvdle66"><a class="hfpxzc"
+                aria-label="Diana Mahrach Couture."
+                href="https://www.google.com/maps/place/Diana+Mahrach+Couture./data=!4m7!3m6!1s0x89c259acc6b1c9b1:0x5ae7f3cc8b6ed5d9!8m2!3d40.7545523!4d-73.9908539!16s%2Fg%2F1tt1j3vp!19sChIJscmxxqxZwokR2dVui8zz51o?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle66;focus:pane.wfvdle66;blur:pane.wfvdle66;auxclick:pane.wfvdle66;keydown:pane.wfvdle66;clickmod:pane.wfvdle66"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJcUFRb0VnIixudWxsLDEwXQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Diana Mahrach Couture.</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.7 estrellas 46 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.7</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(46)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de vestidos de novia</span></span><span>
+                                                <span aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>263 W 38th St</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6 p.m. ⋅ Abre a
+                                                        las 10 a.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-642-4342</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipPamB0hr2xpSwaLJ6h3dY09wVQ2ut2mx7hvnGT4=w80-h106-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 111px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Compras en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Retiros en la puerta</span></div>
+                                <span class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Entrega a domicilio</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle69;mouseout:pane.wfvdle69"><a class="hfpxzc"
+                aria-label="Pattern Making &amp; Dressmaker NYC at Karen Elizabeth Couture"
+                href="https://www.google.com/maps/place/Pattern+Making+%26+Dressmaker+NYC+at+Karen+Elizabeth+Couture/data=!4m7!3m6!1s0x89c3d2a17b7a8fab:0x3c37ffdd1a203e6f!8m2!3d40.7544437!4d-73.9943496!16s%2Fg%2F1tc_9mdp!19sChIJq496e6HSw4kRbz4gGt3_Nzw?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle69;focus:pane.wfvdle69;blur:pane.wfvdle69;auxclick:pane.wfvdle69;keydown:pane.wfvdle69;clickmod:pane.wfvdle69"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJemdRb0V3IixudWxsLDExXQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Pattern Making &amp; Dressmaker NYC at
+                                            Karen Elizabeth Couture</div> <span class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="5.0 estrellas 2 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">5.0</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div><span class="UY7F9"
+                                                        aria-hidden="true">(2)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Modista</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>#1402 - B 347 W, W 36th
+                                                    St.</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6:45 p.m. ⋅ Abre
+                                                        a las 10 a.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    917-696-2814</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipMMVdA4xQDAQ3NWkPY0-jztW5tbB4tDhVT_ds1S=w122-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 111px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle71;mouseout:pane.wfvdle71"><a class="hfpxzc"
+                aria-label="Ellen's Couture"
+                href="https://www.google.com/maps/place/Ellen%27s+Couture/data=!4m7!3m6!1s0x89c2588f7f92fcd7:0xf9a8ee282a125ae8!8m2!3d40.7835451!4d-73.9717424!16s%2Fg%2F1thx4zk2!19sChIJ1_ySf49YwokR6FoSKijuqPk?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle71;focus:pane.wfvdle71;blur:pane.wfvdle71;auxclick:pane.wfvdle71;keydown:pane.wfvdle71;clickmod:pane.wfvdle71"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJOVFRb0ZBIixudWxsLDEyXQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Ellen's Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.9 estrellas 22 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.9</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div><span class="UY7F9"
+                                                        aria-hidden="true">(22)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Modista</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="google-symbols"
+                                                    aria-label="Entrada accesible para personas en silla de ruedas"
+                                                    role="img"
+                                                    data-tooltip="Entrada accesible para personas en silla de ruedas"
+                                                    jsaction="focus:pane.focusTooltip; blur:pane.blurTooltip"
+                                                    style="font-size: 15px;"><span
+                                                        class="doJOZc"></span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>18w W 83rd St #4b</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    646-789-9943</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipM0AvIZ3aqdSX2vvM6ZAS0S3lrC7tFGVbTzllnf=w138-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 126px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle73;mouseout:pane.wfvdle73"><a class="hfpxzc"
+                aria-label="Rahul's Couture"
+                href="https://www.google.com/maps/place/Rahul%27s+Couture/data=!4m7!3m6!1s0x89c25f0725f60431:0xe1dbf957bec47719!8m2!3d40.747518!4d-73.8912497!16s%2Fg%2F11dxrwsgsh!19sChIJMQT2JQdfwokRGXfEvlf52-E?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle73;focus:pane.wfvdle73;blur:pane.wfvdle73;auxclick:pane.wfvdle73;keydown:pane.wfvdle73;clickmod:pane.wfvdle73"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJbkFVb0ZRIixudWxsLDEzXQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Rahul's Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.1 estrellas 117 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.1</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(117)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>37-49 74th Street</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7:30 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    718-672-4857</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/gps-cs-s/AB5caB_2YKJsvVaiDnPGLNlzYIzWoPBp9xdYhliooSmlP1SLN_a7vOBJz69RY8ODYYQvIg8nlHe4vFFf8IX6FQTSDO-Un8vfycUqG2FRZMlt-nsFVNea2heOIF8mFTtG5DNaQ77tsbnTLA=w122-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 111px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Entrega a domicilio</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle76;mouseout:pane.wfvdle76"><a class="hfpxzc"
+                aria-label="Shop Untitled NYC"
+                href="https://www.google.com/maps/place/Shop+Untitled+NYC/data=!4m7!3m6!1s0x89c259972bd15873:0xcf6f23fdad18796a!8m2!3d40.7329667!4d-73.9977697!16s%2Fg%2F1hhlsb2x2!19sChIJc1jRK5dZwokRankYrf0jb88?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle76;focus:pane.wfvdle76;blur:pane.wfvdle76;auxclick:pane.wfvdle76;keydown:pane.wfvdle76;clickmod:pane.wfvdle76"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJd2dVb0ZnIixudWxsLDE0XQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Shop Untitled NYC</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.7 estrellas 93 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.7</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div><span class="UY7F9"
+                                                        aria-hidden="true">(93)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>27 W 8th St</span></span></div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        8 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-228-5166</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipMBoxHTKo1rN0YqWR3rIWmcgaBo7pMQjqHbjUC9=w138-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 126px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Compras en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Retiros en la puerta</span></div>
+                                <span class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Entrega a domicilio</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle79;mouseout:pane.wfvdle79"><a class="hfpxzc"
+                aria-label="DOLLS COUTURE BOUTIQUE"
+                href="https://www.google.com/maps/place/DOLLS+COUTURE+BOUTIQUE/data=!4m7!3m6!1s0x89c2f50c78704f47:0xb8d64f60c763eaa1!8m2!3d40.8373639!4d-73.9208002!16s%2Fg%2F11ghqcng4y!19sChIJR09weAz1wokRoepjx2BP1rg?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle79;focus:pane.wfvdle79;blur:pane.wfvdle79;auxclick:pane.wfvdle79;keydown:pane.wfvdle79;clickmod:pane.wfvdle79"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJNmdVb0Z3IixudWxsLDE1XQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">DOLLS COUTURE BOUTIQUE</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="3.7 estrellas 92 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">3.7</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(92)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Boutique</span></span><span> <span
+                                                    aria-hidden="true">·</span> <span>1263 Jerome Ave</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7:30 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    347-297-2181</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipMV0yQjWtTEd5sA4u-vNc3MgHXfOfXsBHWv703v=w80-h147-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 154px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Compras en tienda</span></div><span
+                                    class="M4A5Cf" aria-hidden="true">·</span>
+                            </div>
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Retiros en la puerta</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle82;mouseout:pane.wfvdle82"><a class="hfpxzc"
+                aria-label="JLM Couture"
+                href="https://www.google.com/maps/place/JLM+Couture/data=!4m7!3m6!1s0x89c259ac5d8d2d57:0xf66c1c147e5b326e!8m2!3d40.7536958!4d-73.9904101!16s%2Fg%2F1tgwnlzq!19sChIJVy2NXaxZwokRbjJbfhQcbPY?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle82;focus:pane.wfvdle82;blur:pane.wfvdle82;auxclick:pane.wfvdle82;keydown:pane.wfvdle82;clickmod:pane.wfvdle82"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJa0FZb0dBIixudWxsLDE2XQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">JLM Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="1.3 estrellas 58 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">1.3</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div>
+                                                    <div class="QBUL8c B53l4e "></div>
+                                                    <div class="QBUL8c B53l4e "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(58)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de vestidos de novia</span></span><span>
+                                                <span aria-hidden="true">·</span> <span>225 W 37th St</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(220,54,46,1.00);">Cerrado</span><span
+                                                        style="font-weight: 400;"> ⋅ Abre a las 9 a.m. del
+                                                        mar</span></span></span><span> <span aria-hidden="true">·</span>
+                                                <span class="UsdlK">+1 212-921-7058</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipMWDY3TE6xinT_J2s_g2dflREDl2vTsg2XOUEqp=w80-h111-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 117px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle84;mouseout:pane.wfvdle84"><a class="hfpxzc"
+                aria-label="JLM Couture"
+                href="https://www.google.com/maps/place/JLM+Couture/data=!4m7!3m6!1s0x89c259ab782c7093:0xc6b7bfd73272d240!8m2!3d40.753538!4d-73.988376!16s%2Fg%2F1tdn5031!19sChIJk3AseKtZwokRQNJyMte_t8Y?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle84;focus:pane.wfvdle84;blur:pane.wfvdle84;auxclick:pane.wfvdle84;keydown:pane.wfvdle84;clickmod:pane.wfvdle84"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJdFFZb0dRIixudWxsLDE3XQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">JLM Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="2.3 estrellas 12 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">2.3</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div>
+                                                    <div class="QBUL8c B53l4e "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(12)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de vestidos de novia</span></span><span>
+                                                <span aria-hidden="true">·</span> <span>525 7th Ave #1703</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(220,54,46,1.00);">Cerrado</span><span
+                                                        style="font-weight: 400;"> ⋅ Abre a las 9 a.m. del
+                                                        mar</span></span></span><span> <span aria-hidden="true">·</span>
+                                                <span class="UsdlK">+1 212-764-6960</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=jOIQETsT_hDiftaksLxjdg&amp;cb_client=search.gws-prod.gps&amp;w=80&amp;h=92&amp;yaw=25.841513&amp;pitch=0&amp;thumbfov=100"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 97px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle86;mouseout:pane.wfvdle86"><a class="hfpxzc"
+                aria-label="Bansum Fashion"
+                href="https://www.google.com/maps/place/Bansum+Fashion/data=!4m7!3m6!1s0x89c259acff607f25:0x5b380fb4f4ddc7ea!8m2!3d40.7538306!4d-73.9916924!16s%2Fg%2F1tkf1x90!19sChIJJX9g_6xZwokR6sfd9LQPOFs?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle86;focus:pane.wfvdle86;blur:pane.wfvdle86;auxclick:pane.wfvdle86;keydown:pane.wfvdle86;clickmod:pane.wfvdle86"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJMndZb0dnIixudWxsLDE4XQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">Bansum Fashion</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="3.7 estrellas 30 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">3.7</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c vIBWLc "></div>
+                                                    <div class="QBUL8c B53l4e "></div><span class="UY7F9"
+                                                        aria-hidden="true">(30)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span>262 W 37th St</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(178,108,0,1.00);">Cierra
+                                                        pronto</span><span style="font-weight: 400;"> ⋅ 6:30 p.m. ⋅ Abre
+                                                        a las 10 a.m. del mar</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    212-268-1148</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipNMVERXEcQb6RAXFZBlF4tGQQZvbsFQf0I6ANV5=w98-h92-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 89px; height: 84px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue"></div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div class="TFQHme "></div>
+    <div>
+        <div class="Nv2PK THOPZb CpccDe " jsaction="mouseover:pane.wfvdle88;mouseout:pane.wfvdle88"><a class="hfpxzc"
+                aria-label="O' Couture"
+                href="https://www.google.com/maps/place/O%27+Couture/data=!4m7!3m6!1s0x89c24ffe0df7b05f:0x60b2a2af47a5c98b!8m2!3d40.5860403!4d-74.0921303!16s%2Fg%2F11txrtyzxb!19sChIJX7D3Df5PwokRi8mlR6-ismA?authuser=0&amp;hl=es-419&amp;rclk=1"
+                jsaction="pane.wfvdle88;focus:pane.wfvdle88;blur:pane.wfvdle88;auxclick:pane.wfvdle88;keydown:pane.wfvdle88;clickmod:pane.wfvdle88"
+                jslog="12690;track:click,contextmenu;mutable:true;metadata:WyIwYWhVS0V3anZyTnJMOHNhTUF4WHBRakFCSFJIbkptb1E4QmNJX3dZb0d3IixudWxsLDE5XQ=="></a>
+            <div class="rWbY0d"></div>
+            <div class="bfdHYd Ppzolf OFBs3e  ">
+                <div class="rgFiGf OyjIsf "></div>
+                <div class="hHbUWd"></div>
+                <div class="rSy5If"></div>
+                <div class="lI9IFe ">
+                    <div class="y7PRA">
+                        <div class="Lui3Od T7Wufd ">
+                            <div class="Z8fK3b">
+                                <div class="OyjIsf "></div>
+                                <div class="UaQhfb fontBodyMedium">
+                                    <div class="NrDZNb">
+                                        <div class="dIDW9d"></div><span class="HTCGSb"></span>
+                                        <div class="qBF1Pd fontHeadlineSmall ">O' Couture</div> <span
+                                            class="muMOJe"></span>
+                                    </div>
+                                    <div class="HAthLd"></div>
+                                    <div class="W4Efsd">
+                                        <div class="AJB7ye"><span class="wZrhX"></span> <span
+                                                class="e4rVHe fontBodyMedium"><span role="img" class="ZkP5Je"
+                                                    aria-label="4.9 estrellas 125 opiniones"><span class="MW4etd"
+                                                        aria-hidden="true">4.9</span>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div>
+                                                    <div class="QBUL8c "></div><span class="UY7F9"
+                                                        aria-hidden="true">(125)</span>
+                                                </span></span></div>
+                                    </div>
+                                    <div class="W4Efsd">
+                                        <div class="W4Efsd"><span><span>Tienda de ropa de mujer</span></span><span>
+                                                <span aria-hidden="true">·</span> <span>1752 Hylan Blvd</span></span>
+                                        </div>
+                                        <div class="W4Efsd"><span><span><span
+                                                        style="font-weight: 400; color: rgba(25,134,57,1.00);">Abierto</span><span
+                                                        style="font-weight: 400;"> ⋅ Cierra a las
+                                                        7 p.m.</span></span></span><span> <span
+                                                    aria-hidden="true">·</span> <span class="UsdlK">+1
+                                                    718-938-6079</span></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="Rwjeuc"></div>
+                    <div class="SpFAAb">
+                        <div class="xwpmRb qisNDe" style="width: 84px; height: 84px; margin: 0px;">
+                            <div class="FQ2IWe p0Hhde" style="min-width: 84px; min-height: 84px;"><img decoding="async"
+                                    src="https://lh3.googleusercontent.com/p/AF1QipN2oMBL9mgoR15uzoCAGMIHKDncyRhwVo9MM6Qo=w80-h120-k-no"
+                                    aria-hidden="true"
+                                    style="position: absolute; top: 50%; left: 50%; width: 84px; height: 126px; transform: translateY(-50%) translateX(-50%);">
+                            </div>
+                            <div class="DJSPJd"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="qty3Ue">
+                    <div class="AyRUI" aria-hidden="true" style="height: 8px;">&nbsp; </div>
+                    <div class="n8sPKe fontBodySmall oj2eXe ccePVe ">
+                        <div class="Ahnjwc fontBodyMedium ">
+                            <div class="W6VQef ">
+                                <div class="ah5Ghc "><span style="font-weight: 400;">Compras en tienda</span></div>
+                            </div>
+                            <div class="Q4BGF"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="gwQ6lc" jsaction="click:mLt3mc"></div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <div class="lXJj5c Hk4XGb ">
+            <div class="qjESne veYFef"></div>
+        </div>
+    </div>
+</div>

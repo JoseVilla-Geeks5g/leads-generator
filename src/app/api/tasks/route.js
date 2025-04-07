@@ -58,7 +58,7 @@ export async function POST(request) {
             radius = 10,
             limit = 5000, // Increased default limit
             includeCategories = [],
-            excludeCategories = [],
+            excludeCategories = [], // Added default empty array here
             keywords = '',
             useRandomCategories = false,
             randomCategoryCount = 5,
@@ -70,7 +70,7 @@ export async function POST(request) {
             location,
             useRandomCategories,
             randomCategoryCount,
-            excludedCount: excludeCategories.length,
+            excludedCount: excludeCategories?.length || 0, // Added null check
             limit
         })}`);
 
@@ -81,19 +81,23 @@ export async function POST(request) {
             radius,
             limit,
             includeCategories,
-            excludeCategories,
+            excludeCategories: excludeCategories || [], // Ensure it's always an array
             keywords,
             useRandomCategories,
             randomCategoryCount,
-            dataToExtract
+            dataToExtract,
+            // Add flag to indicate this task should use the database directly
+            useDirectDatabaseInsert: true,
+            useRealScraper: true
         };
 
         // For random category mode, we need to fetch random categories from the database
         if (useRandomCategories) {
             try {
                 // Get random categories excluding the ones in excludeCategories
-                const excludeClause = excludeCategories.length > 0
-                    ? `WHERE name NOT IN (${excludeCategories.map((_, i) => `$${i + 1}`).join(',')})`
+                const excludeArray = Array.isArray(excludeCategories) ? excludeCategories : [];
+                const excludeClause = excludeArray.length > 0
+                    ? `WHERE name NOT IN (${excludeArray.map((_, i) => `$${i + 1}`).join(',')})`
                     : '';
 
                 const randomCategoriesQuery = `
@@ -105,7 +109,7 @@ export async function POST(request) {
 
                 const randomCategories = await db.getMany(
                     randomCategoriesQuery,
-                    excludeCategories
+                    excludeArray
                 );
 
                 if (randomCategories.length === 0) {
@@ -116,9 +120,10 @@ export async function POST(request) {
                 }
 
                 // Use these random categories for scraping
-                scrapingParams.useRandomCategories = false; // Set back to false as we've resolved it
+                scrapingParams.useRandomCategories = true;
                 scrapingParams.searchTerm = randomCategories[0].name;
                 scrapingParams.includeCategories = randomCategories.map(cat => cat.name);
+                scrapingParams.selectedRandomCategories = randomCategories.map(cat => cat.name);
 
                 logger.info(`Using random categories: ${JSON.stringify(scrapingParams.includeCategories)}`);
             } catch (error) {
@@ -143,7 +148,8 @@ export async function POST(request) {
 
         return NextResponse.json({
             taskId,
-            message: 'Task created successfully'
+            message: 'Task created successfully',
+            isRandomCategoryTask: useRandomCategories
         });
     } catch (error) {
         logger.error(`Error creating scraper task: ${error.message}`);

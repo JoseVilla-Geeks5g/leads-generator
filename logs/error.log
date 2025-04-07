@@ -14778,3 +14778,153 @@
 [2025-04-06T22:18:00.376Z] [ERROR] Error finding email for ThoughtJet Media: emailFinder.findEmail is not a function
 [2025-04-06T22:18:00.891Z] [ERROR] Error finding email for dotedison: emailFinder.findEmail is not a function
 [2025-04-06T22:18:01.403Z] [ERROR] Error finding email for Level 4 Digital Marketing Agency LLC: emailFinder.findEmail is not a function
+[2025-04-07T21:32:08.476Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:08.476Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:08.616Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:08.616Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:08.803Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:08.803Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:09.785Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:09.785Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:10.727Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:10.728Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:11.642Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:11.642Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:12.573Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:12.573Z] [ERROR] Error inserting random category lead for Haute Couture Fashion House: relation "random_category_leads" does not exist
+[2025-04-07T21:32:13.562Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:13.562Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:14.504Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:14.504Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:15.473Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:15.473Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:16.373Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:16.374Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:17.291Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:17.292Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:18.258Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:18.259Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:19.163Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:19.163Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:20.090Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:20.090Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:21.085Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:21.085Z] [ERROR] Error inserting random category lead for Tennis Store: relation "random_category_leads" does not exist
+[2025-04-07T21:32:22.033Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:22.033Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:22.992Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:22.992Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:23.968Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:23.968Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:24.886Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:24.886Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:25.844Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:25.844Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:26.892Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:26.892Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:27.794Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:27.795Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:28.733Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:28.733Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:29.638Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:29.639Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:30.566Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:30.566Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:31.482Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:31.483Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:32.421Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:32.421Z] [ERROR] Error inserting random category lead for Heating Equipment Supplier: relation "random_category_leads" does not exist
+[2025-04-07T21:32:33.558Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:33.558Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:34.689Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:34.689Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:35.694Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:35.694Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:36.567Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:36.567Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:37.524Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:37.524Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:38.469Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:38.469Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:39.354Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:39.355Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:40.295Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:40.296Z] [ERROR] Error inserting random category lead for County Government Office: relation "random_category_leads" does not exist
+[2025-04-07T21:32:41.359Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:41.359Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:42.554Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:42.554Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:47.356Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:47.356Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:48.489Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:48.489Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:51.795Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:51.796Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:53.605Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:53.606Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:54.588Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:54.589Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:55.716Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:55.716Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:57.840Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:57.840Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:32:58.927Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:32:58.927Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:33:00.034Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:00.034Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:33:01.430Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:01.431Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:33:02.560Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:02.560Z] [ERROR] Error inserting random category lead for Petrochemical Engineering Service: relation "random_category_leads" does not exist
+[2025-04-07T21:33:04.035Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:04.036Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:05.053Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:05.054Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:06.132Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:06.133Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:09.036Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:09.036Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:10.176Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:10.176Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:11.914Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:11.915Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:13.736Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:13.736Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:15.327Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:15.327Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:18.270Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:18.270Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:19.628Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:19.628Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:21.909Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:21.910Z] [ERROR] Error inserting random category lead for Body Shaping Class: relation "random_category_leads" does not exist
+[2025-04-07T21:33:22.896Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:22.897Z] [ERROR] Error inserting random category lead for Doner Kebab Restaurant: relation "random_category_leads" does not exist
+[2025-04-07T21:33:24.531Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:24.531Z] [ERROR] Error inserting random category lead for Doner Kebab Restaurant: relation "random_category_leads" does not exist
+[2025-04-07T21:33:25.638Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:25.638Z] [ERROR] Error inserting random category lead for Doner Kebab Restaurant: relation "random_category_leads" does not exist
+[2025-04-07T21:33:27.989Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:27.989Z] [ERROR] Error inserting random category lead for Doner Kebab Restaurant: relation "random_category_leads" does not exist
+[2025-04-07T21:33:29.300Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:29.300Z] [ERROR] Error inserting random category lead for Doner Kebab Restaurant: relation "random_category_leads" does not exist
+[2025-04-07T21:33:32.261Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:32.261Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:33.270Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:33.270Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:34.171Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:34.171Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:35.182Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:35.183Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:36.312Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:36.313Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:37.486Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:37.487Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:38.707Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:38.708Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:40.559Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:40.560Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:42.472Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:42.472Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-07T21:33:43.384Z] [ERROR] Database query error: relation "random_category_leads" does not exist
+[2025-04-07T21:33:43.384Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist

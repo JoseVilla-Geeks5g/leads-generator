@@ -181,6 +181,42 @@ async function initializeTables() {
             );
         `);
 
+        // Create random_category_leads table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS random_category_leads (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                address TEXT,
+                city VARCHAR(100),
+                state VARCHAR(100),
+                country VARCHAR(100),
+                postal_code VARCHAR(20),
+                phone VARCHAR(50),
+                email VARCHAR(255),
+                website VARCHAR(255),
+                domain VARCHAR(255),
+                rating NUMERIC(3,1),
+                category VARCHAR(255) NOT NULL,
+                search_term VARCHAR(255) NOT NULL,
+                search_date TIMESTAMP,
+                task_id VARCHAR(36) REFERENCES scraping_tasks(id),
+                business_type VARCHAR(100),
+                owner_name VARCHAR(255),
+                verified BOOLEAN DEFAULT FALSE,
+                contacted BOOLEAN DEFAULT FALSE,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            );
+            
+            -- Add indexes for better performance
+            CREATE INDEX IF NOT EXISTS idx_random_leads_category ON random_category_leads(category);
+            CREATE INDEX IF NOT EXISTS idx_random_leads_task_id ON random_category_leads(task_id);
+            CREATE INDEX IF NOT EXISTS idx_random_leads_email_exists ON random_category_leads(
+                (case when email IS NOT NULL AND email != '' then true else false end)
+            );
+        `);
+
         // Check for location column in scraping_tasks and add it if it doesn't exist
         const locationColumnExists = await checkColumnExists('scraping_tasks', 'location');
         if (!locationColumnExists) {
