@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Box, Flex, Text } from '@chakra-ui/react';
 
-export default function LeadsTable() {
+const LeadsTable = ({ taskId, isRandomCategoryTask }) => {
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -475,13 +476,17 @@ export default function LeadsTable() {
     }
 
     return (
-        <div ref={tableRef} className="card p-5 hover:shadow-md transition">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
-                <h2 className="text-xl font-semibold flex items-center">
-                    <span className="material-icons mr-3 text-primary">format_list_bulleted</span>
-                    Your Leads ({useCursorPagination ? `${leads.length}+` : totalLeads})
-                </h2>
-
+        <Box 
+            className="bg-white shadow rounded-lg p-4 md:p-6" 
+            height="100%"
+            display="flex"
+            flexDirection="column"
+        >
+            <Flex justify="space-between" align="center" mb={4}>
+                <Text fontSize="xl" fontWeight="bold">
+                    {isRandomCategoryTask ? 'Random Category Leads' : 'Task Leads'}
+                </Text>
+                
                 <div className="flex flex-wrap gap-2">
                     <form onSubmit={handleSearch} className="flex">
                         <div className="relative">
@@ -530,7 +535,7 @@ export default function LeadsTable() {
                         )}
                     </button>
                 </div>
-            </div>
+            </Flex>
 
             {/* Cache indicator */}
             {cacheTimeRef.current && (
@@ -627,125 +632,257 @@ export default function LeadsTable() {
                     </div>
                 )}
 
-            <div className="overflow-x-auto mb-4">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr>
-                            {columns.map(column => (
-                                <th key={column.key} className="px-4 py-3 bg-accent text-left font-semibold">
-                                    <div className="flex flex-col">
-                                        <div
-                                            className={`flex items-center ${column.sortable ? 'cursor-pointer hover:text-primary' : ''}`}
-                                            onClick={() => column.sortable && handleSort(column)}
-                                        >
-                                            {column.label}
-                                            {column.sortable && (
-                                                <span className="material-icons ml-1 text-sm">
-                                                    {sortConfig.column === column.key
-                                                        ? (sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward')
-                                                        : 'unfold_more'}
-                                                </span>
+            {!loading && !error && leads.length > 0 ? (
+                <Box flex="1" overflowX="auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr>
+                                {columns.map(column => (
+                                    <th key={column.key} className="px-4 py-3 bg-accent text-left font-semibold">
+                                        <div className="flex flex-col">
+                                            <div
+                                                className={`flex items-center ${column.sortable ? 'cursor-pointer hover:text-primary' : ''}`}
+                                                onClick={() => column.sortable && handleSort(column)}
+                                            >
+                                                {column.label}
+                                                {column.sortable && (
+                                                    <span className="material-icons ml-1 text-sm">
+                                                        {sortConfig.column === column.key
+                                                            ? (sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward')
+                                                            : 'unfold_more'}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {column.filterable && (
+                                                <select
+                                                    className="mt-1 text-xs border border-light rounded p-1"
+                                                    value={(column.key === 'email' ? hasEmail : column.key === 'website' ? hasWebsite : columnFilters[column.key]) || ''}
+                                                    onChange={(e) => handleColumnFilter(column, e.target.value)}
+                                                >
+                                                    <option value="">All</option>
+                                                    {column.filterOptions?.map(option => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             )}
                                         </div>
-
-                                        {column.filterable && (
-                                            <select
-                                                className="mt-1 text-xs border border-light rounded p-1"
-                                                value={(column.key === 'email' ? hasEmail : column.key === 'website' ? hasWebsite : columnFilters[column.key]) || ''}
-                                                onChange={(e) => handleColumnFilter(column, e.target.value)}
-                                            >
-                                                <option value="">All</option>
-                                                {column.filterOptions?.map(option => (
-                                                    <option key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-light">
+                            {leads.map((lead) => (
+                                <tr key={lead.id} className="hover:bg-accent transition">
+                                    <td className="px-4 py-3.5 font-medium text-primary">{lead.name}</td>
+                                    <td className="px-4 py-3.5">
+                                        {lead.email ? (
+                                            <a href={`mailto:${lead.email}`} className="text-secondary hover:underline">
+                                                {lead.email}
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-400">No email</span>
                                         )}
-                                    </div>
-                                </th>
+                                    </td>
+                                    <td className="px-4 py-3.5">{lead.phone || '-'}</td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center">
+                                            {lead.city && (
+                                                <button
+                                                    className="hover:underline mr-1"
+                                                    onClick={() => updateFilters({ city: lead.city })}
+                                                >
+                                                    {lead.city}
+                                                </button>
+                                            )}
+                                            {lead.city && lead.state && ', '}
+                                            {lead.state && (
+                                                <button
+                                                    className="hover:underline"
+                                                    onClick={() => updateFilters({ state: lead.state })}
+                                                >
+                                                    {lead.state}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        {lead.website ? (
+                                            <a href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                                target="_blank" rel="noopener noreferrer"
+                                                className="text-secondary hover:underline truncate max-w-[150px] inline-block">
+                                                {lead.website}
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-400">No website</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex">
+                                            <button className="p-1.5 rounded-md hover:bg-primary-light text-gray-500 hover:text-primary mr-2 transition" title="View Details">
+                                                <span className="material-icons text-sm">visibility</span>
+                                            </button>
+                                            <button className="p-1.5 rounded-md hover:bg-secondary-light text-gray-500 hover:text-secondary transition" title="Edit">
+                                                <span className="material-icons text-sm">edit</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
                             ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-light">
-                        {leads.map((lead) => (
-                            <tr key={lead.id} className="hover:bg-accent transition">
-                                <td className="px-4 py-3.5 font-medium text-primary">{lead.name}</td>
-                                <td className="px-4 py-3.5">
-                                    {lead.email ? (
-                                        <a href={`mailto:${lead.email}`} className="text-secondary hover:underline">
-                                            {lead.email}
-                                        </a>
-                                    ) : (
-                                        <span className="text-gray-400">No email</span>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3.5">{lead.phone || '-'}</td>
-                                <td className="px-4 py-3.5">
-                                    <div className="flex items-center">
-                                        {lead.city && (
-                                            <button
-                                                className="hover:underline mr-1"
-                                                onClick={() => updateFilters({ city: lead.city })}
-                                            >
-                                                {lead.city}
-                                            </button>
-                                        )}
-                                        {lead.city && lead.state && ', '}
-                                        {lead.state && (
-                                            <button
-                                                className="hover:underline"
-                                                onClick={() => updateFilters({ state: lead.state })}
-                                            >
-                                                {lead.state}
-                                            </button>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="px-4 py-3.5">
-                                    {lead.website ? (
-                                        <a href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
-                                            target="_blank" rel="noopener noreferrer"
-                                            className="text-secondary hover:underline truncate max-w-[150px] inline-block">
-                                            {lead.website}
-                                        </a>
-                                    ) : (
-                                        <span className="text-gray-400">No website</span>
-                                    )}
-                                </td>
-                                <td className="px-4 py-3.5">
-                                    <div className="flex">
-                                        <button className="p-1.5 rounded-md hover:bg-primary-light text-gray-500 hover:text-primary mr-2 transition" title="View Details">
-                                            <span className="material-icons text-sm">visibility</span>
-                                        </button>
-                                        <button className="p-1.5 rounded-md hover:bg-secondary-light text-gray-500 hover:text-secondary transition" title="Edit">
-                                            <span className="material-icons text-sm">edit</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
 
-                        {leads.length === 0 && (
-                            <tr>
-                                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
-                                    No leads found. {currentState || currentCity || currentSearchTerm ? 'Try changing your filters.' : 'Start a scraping task to collect leads.'}
-                                </td>
-                            </tr>
-                        )}
+                            {leads.length === 0 && (
+                                <tr>
+                                    <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                                        No leads found. {currentState || currentCity || currentSearchTerm ? 'Try changing your filters.' : 'Start a scraping task to collect leads.'}
+                                    </td>
+                                </tr>
+                            )}
 
-                        {isLoadingMore && (
-                            <tr>
-                                <td colSpan="6" className="px-4 py-4 text-center">
-                                    <div className="flex justify-center">
-                                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            {isLoadingMore && (
+                                <tr>
+                                    <td colSpan="6" className="px-4 py-4 text-center">
+                                        <div className="flex justify-center">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </Box>
+            ) : (
+                <Flex 
+                    justify="center" 
+                    align="center" 
+                    flex="1"
+                    direction="column"
+                    bg="gray.50" 
+                    borderRadius="md"
+                    p={6}
+                >
+                    <div className="overflow-x-auto mb-4">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr>
+                                    {columns.map(column => (
+                                        <th key={column.key} className="px-4 py-3 bg-accent text-left font-semibold">
+                                            <div className="flex flex-col">
+                                                <div
+                                                    className={`flex items-center ${column.sortable ? 'cursor-pointer hover:text-primary' : ''}`}
+                                                    onClick={() => column.sortable && handleSort(column)}
+                                                >
+                                                    {column.label}
+                                                    {column.sortable && (
+                                                        <span className="material-icons ml-1 text-sm">
+                                                            {sortConfig.column === column.key
+                                                                ? (sortConfig.direction === 'asc' ? 'arrow_upward' : 'arrow_downward')
+                                                                : 'unfold_more'}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {column.filterable && (
+                                                    <select
+                                                        className="mt-1 text-xs border border-light rounded p-1"
+                                                        value={(column.key === 'email' ? hasEmail : column.key === 'website' ? hasWebsite : columnFilters[column.key]) || ''}
+                                                        onChange={(e) => handleColumnFilter(column, e.target.value)}
+                                                    >
+                                                        <option value="">All</option>
+                                                        {column.filterOptions?.map(option => (
+                                                            <option key={option.value} value={option.value}>
+                                                                {option.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-light">
+                                {leads.map((lead) => (
+                                    <tr key={lead.id} className="hover:bg-accent transition">
+                                        <td className="px-4 py-3.5 font-medium text-primary">{lead.name}</td>
+                                        <td className="px-4 py-3.5">
+                                            {lead.email ? (
+                                                <a href={`mailto:${lead.email}`} className="text-secondary hover:underline">
+                                                    {lead.email}
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400">No email</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3.5">{lead.phone || '-'}</td>
+                                        <td className="px-4 py-3.5">
+                                            <div className="flex items-center">
+                                                {lead.city && (
+                                                    <button
+                                                        className="hover:underline mr-1"
+                                                        onClick={() => updateFilters({ city: lead.city })}
+                                                    >
+                                                        {lead.city}
+                                                    </button>
+                                                )}
+                                                {lead.city && lead.state && ', '}
+                                                {lead.state && (
+                                                    <button
+                                                        className="hover:underline"
+                                                        onClick={() => updateFilters({ state: lead.state })}
+                                                    >
+                                                        {lead.state}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            {lead.website ? (
+                                                <a href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                                    target="_blank" rel="noopener noreferrer"
+                                                    className="text-secondary hover:underline truncate max-w-[150px] inline-block">
+                                                    {lead.website}
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400">No website</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                            <div className="flex">
+                                                <button className="p-1.5 rounded-md hover:bg-primary-light text-gray-500 hover:text-primary mr-2 transition" title="View Details">
+                                                    <span className="material-icons text-sm">visibility</span>
+                                                </button>
+                                                <button className="p-1.5 rounded-md hover:bg-secondary-light text-gray-500 hover:text-secondary transition" title="Edit">
+                                                    <span className="material-icons text-sm">edit</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+
+                                {leads.length === 0 && (
+                                    <tr>
+                                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                                            No leads found. {currentState || currentCity || currentSearchTerm ? 'Try changing your filters.' : 'Start a scraping task to collect leads.'}
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {isLoadingMore && (
+                                    <tr>
+                                        <td colSpan="6" className="px-4 py-4 text-center">
+                                            <div className="flex justify-center">
+                                                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </Flex>
+            )}
 
             {/* Pagination - either standard pagination or "Load More" button */}
             {leads.length > 0 && (
@@ -863,6 +1000,8 @@ export default function LeadsTable() {
                     </div>
                 </div>
             </div>
-        </div>
+        </Box>
     );
-}
+};
+
+export default LeadsTable;

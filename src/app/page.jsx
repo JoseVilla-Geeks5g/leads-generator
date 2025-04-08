@@ -51,15 +51,13 @@ export default function HomePage() {
                                 <StatisticsPanel />
                                 <TasksPanel />
                             </div>
-
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                            <div className="lg:col-span-1">
-                                <TaskStatusPanel />
+                            <div className="lg:col-span-3">
+                                {/* <TaskStatusPanel /> */}
                             </div>
 
                         </div>
+
+                        
                     </div>
                 </main>
             </div>

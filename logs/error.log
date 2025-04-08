@@ -14928,3 +14928,705 @@
 [2025-04-07T21:33:42.472Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
 [2025-04-07T21:33:43.384Z] [ERROR] Database query error: relation "random_category_leads" does not exist
 [2025-04-07T21:33:43.384Z] [ERROR] Error inserting random category lead for Amish Furniture Store: relation "random_category_leads" does not exist
+[2025-04-08T15:13:03.382Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:03.382Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:05.043Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:05.043Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:05.512Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:05.512Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:05.755Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:05.755Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:07.934Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:07.934Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:08.085Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:08.086Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:08.139Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:08.139Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:13.365Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:13.366Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:30.209Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:30.209Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:30.819Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:30.819Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:32.142Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:32.142Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:37.134Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:37.135Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:43.082Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:43.082Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:47.147Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:47.147Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:52.123Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:52.123Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:13:57.089Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:13:57.089Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:03.032Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:03.032Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:07.087Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:07.087Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:12.091Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:12.091Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:17.136Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:17.136Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:22.103Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:22.103Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:27.132Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:27.132Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:32.109Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:32.109Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:37.105Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:37.106Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:42.132Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:42.132Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:47.136Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:47.136Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:52.140Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:52.141Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:14:57.192Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:14:57.192Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:15:02.558Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:15:02.558Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:15:07.126Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:15:07.127Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:15:12.132Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:15:12.133Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:15:17.160Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:15:17.161Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:16:13.406Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:16:13.407Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:17:12.983Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:17:12.983Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:18:13.172Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:18:13.173Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:18:49.342Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:18:49.342Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:18:54.122Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:18:54.123Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:18:56.209Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:18:56.209Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:18:56.357Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:18:56.357Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:01.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:01.097Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:05.087Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:05.087Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:11.123Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:11.124Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:15.133Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:15.133Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:20.083Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:20.083Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:25.089Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:25.089Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:30.137Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:30.137Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:35.116Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:35.117Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:40.087Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:40.087Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:45.098Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:45.098Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:50.089Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:50.089Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:19:55.100Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:19:55.100Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:01.048Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:01.048Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:05.882Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:05.882Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:10.099Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:10.099Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:15.097Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:15.098Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:20.091Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:20.091Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:25.104Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:25.105Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:30.222Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:30.222Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:35.171Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:35.171Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:40.108Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:40.108Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:45.656Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:45.656Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:50.180Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:50.180Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:20:55.202Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:20:55.202Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:00.231Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:00.231Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:05.237Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:05.238Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:10.098Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:10.099Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:15.099Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:15.099Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:20.145Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:20.146Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:25.083Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:25.084Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:30.118Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:30.118Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:35.094Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:35.094Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:40.117Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:40.117Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:45.098Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:45.098Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:50.080Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:50.081Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:21:55.083Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:21:55.083Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:00.151Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:00.151Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:05.116Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:05.116Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:10.137Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:10.138Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:15.145Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:15.145Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:20.094Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:20.094Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:25.109Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:25.109Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:30.135Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:30.135Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:35.119Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:35.119Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:40.100Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:40.100Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:45.149Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:45.149Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:50.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:50.096Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:22:55.095Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:22:55.095Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:00.162Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:00.162Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:05.126Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:05.126Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:11.848Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:11.848Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:15.122Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:15.122Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:20.599Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:20.600Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:25.227Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:25.227Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:30.115Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:30.115Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:35.102Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:35.102Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:40.098Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:40.098Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:45.111Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:45.112Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:50.106Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:50.106Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:23:55.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:23:55.097Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:00.105Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:00.106Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:05.100Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:05.100Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:10.191Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:10.191Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:15.151Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:15.151Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:20.099Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:20.099Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:25.108Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:25.108Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:30.150Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:30.150Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:35.536Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:35.537Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:41.412Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:41.412Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:45.144Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:45.145Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:50.118Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:50.118Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:24:55.126Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:24:55.126Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:00.132Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:00.133Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:05.111Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:05.111Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:10.120Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:10.120Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:18.768Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:18.768Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:20.179Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:20.180Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:25.157Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:25.157Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:31.338Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:31.338Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:35.102Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:35.102Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:40.099Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:40.099Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:45.157Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:45.157Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:50.099Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:50.099Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:25:55.119Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:25:55.119Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:00.154Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:00.154Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:05.112Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:05.113Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:10.123Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:10.123Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:15.166Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:15.167Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:20.117Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:20.117Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:25.118Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:25.119Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:30.125Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:30.125Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:35.127Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:35.128Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:40.115Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:40.115Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:45.112Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:45.112Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:50.105Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:50.105Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:26:55.530Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:26:55.531Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:00.581Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:00.581Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:05.104Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:05.104Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:10.111Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:10.111Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:15.103Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:15.103Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:20.089Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:20.089Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:25.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:25.097Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:30.564Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:30.564Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:35.192Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:35.192Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:40.526Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:40.526Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:45.252Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:45.252Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:50.102Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:50.102Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:27:56.144Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:27:56.144Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:00.111Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:00.112Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:06.123Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:06.124Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:11.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:11.096Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:16.940Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:16.940Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:21.123Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:21.123Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:26.185Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:26.185Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:31.077Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:31.077Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:36.110Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:36.111Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:41.189Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:41.189Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:46.129Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:46.129Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:51.107Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:51.107Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:28:56.124Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:28:56.124Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:00.097Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:00.097Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:05.117Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:05.117Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:11.105Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:11.106Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:16.589Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:16.589Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:20.709Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:20.709Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:23.417Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:23.417Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:23.610Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:23.610Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:28.103Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:28.103Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:33.455Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:33.455Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:38.516Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:38.516Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:43.119Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:43.119Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:48.072Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:48.072Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:53.091Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:53.091Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:29:57.475Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:29:57.475Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:02.499Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:02.499Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:07.879Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:07.879Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:12.490Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:12.491Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:17.520Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:17.520Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:23.075Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:23.075Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:28.509Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:28.510Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:33.115Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:33.116Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:38.086Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:38.086Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:43.148Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:43.148Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:48.493Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:48.494Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:53.082Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:53.083Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:30:58.078Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:30:58.078Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:03.477Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:03.478Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:08.186Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:08.187Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:13.081Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:13.081Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:18.962Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:18.963Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:20.977Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:20.977Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:21.160Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:21.160Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:25.615Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:25.615Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:31.104Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:31.104Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:35.395Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:35.395Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:41.089Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:41.089Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:46.535Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:46.536Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:51.127Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:51.127Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:31:56.110Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:31:56.111Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:01.102Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:01.102Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:06.075Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:06.075Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:11.124Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:11.124Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:16.106Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:16.106Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:21.079Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:21.079Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:26.107Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:26.108Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:31.104Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:31.104Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:32:36.098Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:32:36.098Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:33:13.442Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:33:13.442Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:34:13.710Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:34:13.710Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:35:13.653Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:35:13.653Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:36:13.087Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:36:13.087Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:37:13.036Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:37:13.036Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:38:13.020Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:38:13.020Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:13.764Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:13.764Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:38.150Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:38.150Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:40.812Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:40.812Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:41.029Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:41.029Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:41.189Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:41.190Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:46.033Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:46.033Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:51.058Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:51.058Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:39:56.074Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:39:56.074Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:12.276Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:12.277Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:13.438Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:13.438Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:13.622Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:13.622Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:13.783Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:13.783Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:16.084Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:16.084Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:16.582Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:16.582Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:21.595Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:21.595Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:27.470Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:27.470Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:27.621Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:27.622Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:27.770Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:27.770Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:31.069Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:31.069Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:32.075Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:32.075Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:36.054Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:36.055Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:36.576Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:36.576Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:38.628Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:38.628Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:38.812Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:38.812Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:41.095Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:41.095Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:44.077Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:44.077Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:46.052Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:46.052Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:49.079Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:49.079Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:51.085Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:51.085Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:54.073Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:54.073Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:55.835Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:55.836Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:55.987Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:55.987Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:40:56.137Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:40:56.137Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:01.074Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:01.075Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:01.251Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:01.251Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:06.071Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:06.071Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:11.116Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:11.116Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:12.077Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:12.078Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:16.089Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:16.090Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:21.060Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:21.061Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:26.087Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:26.087Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:31.086Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:31.086Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:36.092Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:36.092Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:41.162Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:41.162Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:47.953Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:47.954Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:52.052Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:52.052Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:41:56.183Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:41:56.184Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:01.093Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:01.093Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:06.153Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:06.153Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:10.911Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:10.911Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:12.107Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:12.107Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:16.100Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:16.100Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:21.153Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:21.153Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:26.144Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:26.144Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:31.071Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:31.071Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:36.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:36.096Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:41.063Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:41.063Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:46.477Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:46.477Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:51.086Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:51.087Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:42:56.096Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:42:56.096Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:43:01.085Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:43:01.085Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:43:06.084Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:43:06.084Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:43:11.610Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:43:11.611Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:43:12.116Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:43:12.116Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:44:13.045Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:44:13.045Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:44:13.231Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:44:13.231Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:13.351Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:13.351Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:13.513Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:13.513Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:18.230Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:18.230Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:21.071Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:21.072Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:21.317Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:21.317Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:24.424Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:24.424Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:28.862Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:28.862Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:33.856Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:33.857Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:38.869Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:38.869Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:43.896Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:43.897Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:45:48.891Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:45:48.891Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:46:13.131Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:46:13.132Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:47:05.469Z] [ERROR] Database query error: multiple assignments to same column "params"
+[2025-04-08T15:47:05.469Z] [ERROR] Error updating task category progress: multiple assignments to same column "params"
+[2025-04-08T15:47:13.614Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:47:13.614Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:48:14.478Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:48:14.478Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:49:12.110Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:49:12.111Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:49:33.915Z] [ERROR] Database query error: value too long for type character varying(255)
+[2025-04-08T15:49:33.915Z] [ERROR] Error saving business Osteria 57: value too long for type character varying(255)
+[2025-04-08T15:49:34.956Z] [ERROR] Database query error: value too long for type character varying(255)
+[2025-04-08T15:49:34.956Z] [ERROR] Error saving business O'Toole's Way: value too long for type character varying(255)
+[2025-04-08T15:50:13.090Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:50:13.090Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:50:17.323Z] [ERROR] Database query error: multiple assignments to same column "params"
+[2025-04-08T15:50:17.324Z] [ERROR] Error updating task category progress: multiple assignments to same column "params"
+[2025-04-08T15:51:06.355Z] [ERROR] Database query error: value too long for type character varying(255)
+[2025-04-08T15:51:06.355Z] [ERROR] Error saving business Buena Vista Restaurant & Bar: value too long for type character varying(255)
+[2025-04-08T15:51:07.808Z] [ERROR] Database query error: value too long for type character varying(255)
+[2025-04-08T15:51:07.808Z] [ERROR] Error saving business Āne Bar & Restaurant NYC - Patio | Fine Dining | Rooftop Vibes | Best Outdoor Seating in NYC: value too long for type character varying(255)
+[2025-04-08T15:51:14.795Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:51:14.796Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:51:15.271Z] [ERROR] Database query error: multiple assignments to same column "params"
+[2025-04-08T15:51:15.271Z] [ERROR] Error updating task category progress: multiple assignments to same column "params"
+[2025-04-08T15:52:13.543Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:52:13.544Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:52:26.094Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:52:26.094Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:52:31.014Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:52:31.015Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:52:36.059Z] [ERROR] Error getting task status: Task not found
+[2025-04-08T15:52:36.059Z] [ERROR] Error in GET /api/tasks: Task not found
+[2025-04-08T15:53:50.062Z] [ERROR] Database query error: multiple assignments to same column "params"
+[2025-04-08T15:53:50.062Z] [ERROR] Error updating task category progress: multiple assignments to same column "params"
+[2025-04-08T15:56:35.182Z] [ERROR] Database query error: multiple assignments to same column "params"
+[2025-04-08T15:56:35.182Z] [ERROR] Error updating task category progress: multiple assignments to same column "params"
+[2025-04-08T15:58:27.529Z] [ERROR] Database query error: value too long for type character varying(255)
+[2025-04-08T15:58:27.529Z] [ERROR] Error saving business No Shorts Electric Inc.: value too long for type character varying(255)
+[2025-04-08T15:58:29.460Z] [ERROR] Database query error: value too long for type character varying(255)
+[2025-04-08T15:58:29.461Z] [ERROR] Error saving business Ray Romano Contracting: value too long for type character varying(255)
+[2025-04-08T15:59:40.279Z] [ERROR] Database query error: multiple assignments to same column "params"
+[2025-04-08T15:59:40.279Z] [ERROR] Error updating task category progress: multiple assignments to same column "params"
+[2025-04-08T16:32:20.039Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:32:20.040Z] [ERROR] Error in real Google Maps scraping for Desalination Plant: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:32:56.317Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:32:56.317Z] [ERROR] Error in real Google Maps scraping for Cat Cafe: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:33:32.671Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:33:32.671Z] [ERROR] Error in real Google Maps scraping for Sushi Takeaway: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:34:08.892Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:34:08.892Z] [ERROR] Error in real Google Maps scraping for Manufacturer: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:34:45.163Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:34:45.163Z] [ERROR] Error in real Google Maps scraping for Obanzai Restaurant: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:35:26.116Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:35:26.116Z] [ERROR] Error in real Google Maps scraping for Orphanage: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:36:02.902Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:36:02.902Z] [ERROR] Error in real Google Maps scraping for Occupational Medical Physician: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:36:39.165Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:36:39.165Z] [ERROR] Error in real Google Maps scraping for Furniture Maker: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:37:15.340Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:37:15.340Z] [ERROR] Error in real Google Maps scraping for Forestry Service: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:37:51.653Z] [ERROR] Error scraping Google Maps: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+
+[2025-04-08T16:37:51.653Z] [ERROR] Error in real Google Maps scraping for Intellectual Property Registry: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
+

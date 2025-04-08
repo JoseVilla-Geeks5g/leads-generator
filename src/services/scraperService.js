@@ -531,11 +531,11 @@ class ScraperService {
 
             // Extract parameters for random categories
             const location = params.location || '';
-            const limit = params.limit || 100;
+            // Remove any limit on the number of categories
             const selectedRandomCategories = params.selectedRandomCategories || [];
 
             logger.info(`Random Category Task ${taskId} running for location "${location}"`);
-            logger.info(`Random categories: ${JSON.stringify(selectedRandomCategories)}`);
+            logger.info(`Processing all ${selectedRandomCategories.length} random categories without limit`);
             
             if (selectedRandomCategories.length === 0) {
                 logger.error(`No random categories selected for task ${taskId}`);
@@ -548,20 +548,26 @@ class ScraperService {
             
             // Perform actual scraping for each category
             let totalBusinessesFound = 0;
+            let categoriesCompleted = 0;
             
-            // Process categories one by one
+            // Process categories one by one - no limit on number of categories
             for (const category of selectedRandomCategories) {
                 // Use our real scraping method
                 const count = await this.scrapeBusinessesFromGoogleMaps(taskId, category, location);
                 if (count) totalBusinessesFound += count;
                 
+                // Update category progress
+                categoriesCompleted++;
+                await this.updateTaskCategoryProgress(taskId, categoriesCompleted, selectedRandomCategories.length);
+                
                 // Add a delay between category searches to avoid being blocked
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                logger.info(`Completed category "${category}" (${categoriesCompleted}/${selectedRandomCategories.length}), sleeping before next category...`);
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Increased from 3000 to 5000 ms
             }
             
             // Mark the task as completed after all categories are processed
             await this.updateTaskStatus(taskId, 'completed', totalBusinessesFound);
-            logger.info(`Random category task ${taskId} completed with ${totalBusinessesFound} businesses found`);
+            logger.info(`Random category task ${taskId} completed with ${totalBusinessesFound} businesses found across ${selectedRandomCategories.length} categories`);
             
         } catch (error) {
             logger.error(`Error running random category task ${taskId}: ${error.message}`);
@@ -573,6 +579,55 @@ class ScraperService {
             } catch (err) {
                 logger.error(`Error closing scraper: ${err.message}`);
             }
+        }
+    }
+
+    /**
+     * Update category progress for a task
+     * @param {string} taskId - Task ID
+     * @param {number} categoriesCompleted - Number of categories completed
+     * @param {number} totalCategories - Total number of categories
+     */
+    async updateTaskCategoryProgress(taskId, categoriesCompleted, totalCategories) {
+        try {
+            // Update in memory
+            const task = this.tasks.get(taskId);
+            if (task) {
+                task.categoriesCompleted = categoriesCompleted;
+                task.totalCategories = totalCategories;
+            }
+
+            // Fix: Use separate UPDATE statements to avoid multiple assignments to the same column
+            // Update categoriesCompleted
+            await db.query(`
+                UPDATE scraping_tasks
+                SET params = jsonb_set(
+                    CASE 
+                        WHEN params IS NULL THEN '{}'::jsonb 
+                        WHEN params::text = '' THEN '{}'::jsonb
+                        ELSE params::jsonb 
+                    END, 
+                    '{categoriesCompleted}', $1::jsonb
+                )
+                WHERE id = $2
+            `, [JSON.stringify(categoriesCompleted), taskId]);
+            
+            // Update totalCategories
+            await db.query(`
+                UPDATE scraping_tasks
+                SET params = jsonb_set(
+                    CASE 
+                        WHEN params IS NULL THEN '{}'::jsonb 
+                        WHEN params::text = '' THEN '{}'::jsonb
+                        ELSE params::jsonb 
+                    END, 
+                    '{totalCategories}', $1::jsonb
+                )
+                WHERE id = $2
+            `, [JSON.stringify(totalCategories), taskId]);
+            
+        } catch (error) {
+            logger.error(`Error updating task category progress: ${error.message}`);
         }
     }
 
@@ -615,9 +670,9 @@ class ScraperService {
             // Build search query
             const searchQuery = `${category} in ${location}`;
             
-            // Set scraping options
+            // Set scraping options - no category limits
             const options = {
-                maxResults: 200, // Get up to 25 businesses per category
+                maxResults: 500, // Increased from 200 to 500 for more comprehensive data collection
                 taskId: taskId
             };
             
@@ -667,6 +722,16 @@ class ScraperService {
                     // Add review count to the notes field for reference
                     const notes = business.reviewCount ? `Reviews: ${business.reviewCount}` : '';
                     
+                    // Fix: Truncate any fields that might exceed their column length limits
+                    const truncatedName = business.name ? business.name.substring(0, 250) : 'Unnamed Business';
+                    const truncatedAddress = business.address ? business.address.substring(0, 2000) : 'No address available';
+                    const truncatedCity = city ? city.substring(0, 95) : '';
+                    const truncatedState = state ? state.substring(0, 95) : '';
+                    const truncatedPhone = business.phone ? business.phone.substring(0, 45) : null;
+                    const truncatedWebsite = business.website ? business.website.substring(0, 250) : null;
+                    const truncatedDomain = domain ? domain.substring(0, 250) : null;
+                    const truncatedCategory = category ? category.substring(0, 250) : 'Uncategorized';
+                    
                     // Use both the regular business_listings table and our special random_category_leads
                     await db.query(`
                         INSERT INTO business_listings (
@@ -677,17 +742,17 @@ class ScraperService {
                         )
                         ON CONFLICT (name, search_term) DO NOTHING
                     `, [
-                        business.name,
-                        business.address || 'No address available',
-                        city,
-                        state,
+                        truncatedName,
+                        truncatedAddress,
+                        truncatedCity,
+                        truncatedState,
                         'United States',
                         postalCode,
-                        business.phone || null,
-                        business.website || null,
-                        domain,
+                        truncatedPhone,
+                        truncatedWebsite,
+                        truncatedDomain,
                         business.rating || null,
-                        category,
+                        truncatedCategory,
                         new Date().toISOString(),
                         taskId,
                         notes
@@ -703,25 +768,25 @@ class ScraperService {
                         )
                         ON CONFLICT DO NOTHING
                     `, [
-                        business.name,
-                        business.address || 'No address available',
-                        city,
-                        state,
+                        truncatedName,
+                        truncatedAddress, 
+                        truncatedCity,
+                        truncatedState,
                         'United States',
                         postalCode,
-                        business.phone || null,
-                        business.website || null,
-                        domain,
+                        truncatedPhone,
+                        truncatedWebsite,
+                        truncatedDomain,
                         business.rating || null,
-                        category,
-                        category,
+                        truncatedCategory,
+                        truncatedCategory,
                         new Date().toISOString(),
                         taskId,
                         notes
                     ]);
                     
                     savedCount++;
-                    logger.debug(`Saved business: ${business.name} (${business.address}) ${business.phone || 'No phone'}`);
+                    logger.debug(`Saved business: ${truncatedName} (${truncatedAddress}) ${truncatedPhone || 'No phone'}`);
                     
                 } catch (error) {
                     logger.error(`Error saving business ${business.name}: ${error.message}`);
@@ -1003,19 +1068,39 @@ class ScraperService {
                 return this.tasks.get(taskId);
             }
 
-            // If not found, get from database
-            const task = await db.getOne(`
-                SELECT * FROM scraping_tasks WHERE id = $1
-            `, [taskId]);
+            // If not found, get from database with better error handling
+            try {
+                const task = await db.getOne(`
+                    SELECT * FROM scraping_tasks WHERE id = $1
+                `, [taskId]);
 
-            if (!task) {
-                throw new Error('Task not found');
+                if (!task) {
+                    // Instead of throwing error, return a structured response
+                    return {
+                        id: taskId,
+                        status: 'unknown',
+                        error: 'Task not found in database',
+                        notFound: true
+                    };
+                }
+
+                return task;
+            } catch (dbError) {
+                // Handle database errors gracefully
+                logger.error(`Database error while getting task status: ${dbError.message}`);
+                return {
+                    id: taskId,
+                    status: 'error',
+                    error: `Database error: ${dbError.message}`
+                };
             }
-
-            return task;
         } catch (error) {
             logger.error(`Error getting task status: ${error.message}`);
-            throw error;
+            return {
+                id: taskId,
+                status: 'error',
+                error: error.message
+            };
         }
     }
 

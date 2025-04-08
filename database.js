@@ -119,7 +119,7 @@ async function initializeTables() {
             CREATE TABLE IF NOT EXISTS business_listings (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
-                address TEXT,
+                address TEXT,  /* Changed from VARCHAR(255) to TEXT to accommodate longer addresses */
                 city VARCHAR(100),
                 state VARCHAR(100),
                 country VARCHAR(100),
@@ -181,41 +181,31 @@ async function initializeTables() {
             );
         `);
 
-        // Create random_category_leads table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS random_category_leads (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                address TEXT,
-                city VARCHAR(100),
-                state VARCHAR(100),
-                country VARCHAR(100),
-                postal_code VARCHAR(20),
-                phone VARCHAR(50),
-                email VARCHAR(255),
-                website VARCHAR(255),
-                domain VARCHAR(255),
-                rating NUMERIC(3,1),
-                category VARCHAR(255) NOT NULL,
-                search_term VARCHAR(255) NOT NULL,
-                search_date TIMESTAMP,
-                task_id VARCHAR(36) REFERENCES scraping_tasks(id),
-                business_type VARCHAR(100),
-                owner_name VARCHAR(255),
-                verified BOOLEAN DEFAULT FALSE,
-                contacted BOOLEAN DEFAULT FALSE,
-                notes TEXT,
-                created_at TIMESTAMP DEFAULT NOW(),
-                updated_at TIMESTAMP DEFAULT NOW()
-            );
+        // Alter table to change address column type if needed
+        try {
+            await pool.query(`
+                ALTER TABLE business_listings 
+                ALTER COLUMN address TYPE TEXT;
+            `).catch(e => {
+                // Ignore if column is already TEXT type
+                if (!e.message.includes('already exists')) {
+                    console.error('Error altering address column:', e.message);
+                }
+            });
             
-            -- Add indexes for better performance
-            CREATE INDEX IF NOT EXISTS idx_random_leads_category ON random_category_leads(category);
-            CREATE INDEX IF NOT EXISTS idx_random_leads_task_id ON random_category_leads(task_id);
-            CREATE INDEX IF NOT EXISTS idx_random_leads_email_exists ON random_category_leads(
-                (case when email IS NOT NULL AND email != '' then true else false end)
-            );
-        `);
+            // Also fix random_category_leads
+            await pool.query(`
+                ALTER TABLE random_category_leads 
+                ALTER COLUMN address TYPE TEXT;
+            `).catch(e => {
+                // Ignore if column is already TEXT type
+                if (!e.message.includes('already exists')) {
+                    console.error('Error altering address column in random_category_leads:', e.message);
+                }
+            });
+        } catch (err) {
+            console.error('Error altering column types:', err.message);
+        }
 
         // Check for location column in scraping_tasks and add it if it doesn't exist
         const locationColumnExists = await checkColumnExists('scraping_tasks', 'location');

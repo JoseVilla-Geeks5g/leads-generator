@@ -21,7 +21,6 @@ export default function SearchFilters() {
 
     // New options
     const [useRandomCategories, setUseRandomCategories] = useState(false);
-    const [randomCategoryCount, setRandomCategoryCount] = useState(5);
     const [searchMode, setSearchMode] = useState('specific'); // 'specific', 'random'
 
     const router = useRouter();
@@ -64,7 +63,6 @@ export default function SearchFilters() {
                     setContactLimit(searchData.contactLimit || 5000);
                     setKeywordsInput(searchData.keywords || '');
                     setSearchMode(searchData.searchMode || 'specific');
-                    setRandomCategoryCount(searchData.randomCategoryCount || 5);
                 }
             }
         } catch (error) {
@@ -179,7 +177,6 @@ export default function SearchFilters() {
                 contactLimit,
                 keywords: keywordsInput,
                 searchMode,
-                randomCategoryCount,
                 timestamp: new Date().toISOString()
             };
 
@@ -201,7 +198,6 @@ export default function SearchFilters() {
                     excludeCategories: excludedCategories, // Use the state variable here
                     keywords: keywordsInput,
                     useRandomCategories: searchMode === 'random',
-                    randomCategoryCount: searchMode === 'random' ? randomCategoryCount : 0,
                     dataToExtract: Object.entries(selectedData)
                         .filter(([_, selected]) => selected)
                         .map(([name, _]) => name.toLowerCase().replace(/\s+/g, '_'))
@@ -234,7 +230,6 @@ export default function SearchFilters() {
         setKeywordsInput('');
         setContactLimit(100);
         setSearchMode('specific');
-        setRandomCategoryCount(5);
 
         // Reset data extraction options
         setSelectedData({
@@ -346,26 +341,8 @@ export default function SearchFilters() {
                         <div>
                             <label className="block text-sm font-medium mb-2">Random Category Settings</label>
                             <div className="bg-accent p-4 rounded-lg">
-                                <div className="flex justify-between text-sm font-medium mb-2">
-                                    <span>Number of random categories</span>
-                                    <span className="text-primary font-semibold">{randomCategoryCount}</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="20"
-                                    step="1"
-                                    className="w-full accent-primary h-2 rounded-lg appearance-none bg-gray-200"
-                                    value={randomCategoryCount}
-                                    onChange={(e) => setRandomCategoryCount(parseInt(e.target.value))}
-                                />
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                    <span>1</span>
-                                    <span>10</span>
-                                    <span>20</span>
-                                </div>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    The system will randomly select {randomCategoryCount} categories from the database
+                                    The system will randomly select categories from the database
                                     for scraping, excluding any categories you've specified to exclude.
                                 </p>
                             </div>

@@ -18,6 +18,19 @@ export async function GET(request) {
         // If task ID provided, get specific task
         if (taskId) {
             const task = await scraperService.getTaskStatus(taskId);
+            
+            // Handle task not found case more gracefully
+            if (task && task.notFound) {
+                return NextResponse.json(
+                    { 
+                        error: 'Task not found',
+                        id: taskId,
+                        status: 'unknown'
+                    }, 
+                    { status: 404 }
+                );
+            }
+            
             return NextResponse.json(task);
         }
 
@@ -61,7 +74,6 @@ export async function POST(request) {
             excludeCategories = [], // Added default empty array here
             keywords = '',
             useRandomCategories = false,
-            randomCategoryCount = 5,
             dataToExtract = []
         } = body;
 
@@ -69,8 +81,7 @@ export async function POST(request) {
             searchTerm,
             location,
             useRandomCategories,
-            randomCategoryCount,
-            excludedCount: excludeCategories?.length || 0, // Added null check
+            excludedCount: excludeCategories?.length || 0,
             limit
         })}`);
 
@@ -81,12 +92,10 @@ export async function POST(request) {
             radius,
             limit,
             includeCategories,
-            excludeCategories: excludeCategories || [], // Ensure it's always an array
+            excludeCategories: excludeCategories || [], 
             keywords,
             useRandomCategories,
-            randomCategoryCount,
             dataToExtract,
-            // Add flag to indicate this task should use the database directly
             useDirectDatabaseInsert: true,
             useRealScraper: true
         };
@@ -100,11 +109,11 @@ export async function POST(request) {
                     ? `WHERE name NOT IN (${excludeArray.map((_, i) => `$${i + 1}`).join(',')})`
                     : '';
 
+                // Get all matching categories without a limit - use all available
                 const randomCategoriesQuery = `
                     SELECT name FROM categories
                     ${excludeClause}
                     ORDER BY RANDOM()
-                    LIMIT ${randomCategoryCount}
                 `;
 
                 const randomCategories = await db.getMany(
@@ -119,13 +128,13 @@ export async function POST(request) {
                     );
                 }
 
-                // Use these random categories for scraping
+                // Use all these random categories for scraping
                 scrapingParams.useRandomCategories = true;
                 scrapingParams.searchTerm = randomCategories[0].name;
                 scrapingParams.includeCategories = randomCategories.map(cat => cat.name);
                 scrapingParams.selectedRandomCategories = randomCategories.map(cat => cat.name);
 
-                logger.info(`Using random categories: ${JSON.stringify(scrapingParams.includeCategories)}`);
+                logger.info(`Using all ${randomCategories.length} random categories: ${JSON.stringify(scrapingParams.includeCategories)}`);
             } catch (error) {
                 logger.error(`Error fetching random categories: ${error.message}`);
                 return NextResponse.json(
@@ -149,7 +158,8 @@ export async function POST(request) {
         return NextResponse.json({
             taskId,
             message: 'Task created successfully',
-            isRandomCategoryTask: useRandomCategories
+            isRandomCategoryTask: useRandomCategories,
+            categoriesSelected: scrapingParams.selectedRandomCategories?.length || 0
         });
     } catch (error) {
         logger.error(`Error creating scraper task: ${error.message}`);

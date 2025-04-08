@@ -59,7 +59,8 @@ class GoogleMapsScraper {
     }
 
     const businesses = [];
-    const maxResults = options.maxResults || 20;
+    // Remove maximum results cap to allow full data collection
+    const maxResults = options.maxResults || 500; // Increased from 20 to 500
     let retries = 0;
 
     logger.info(`Starting to scrape Google Maps for: ${searchQuery}`);
@@ -130,7 +131,9 @@ class GoogleMapsScraper {
       let noNewResultsCount = 0;
       
       // Scroll and collect results until we have enough or no more new results
-      while (extractedCount < maxResults && noNewResultsCount < 3) {
+      // Increase the no-results threshold to ensure we get more complete results
+      const maxNoNewResults = 5; // Increased from 3 to 5 for more thorough scraping
+      while (extractedCount < maxResults && noNewResultsCount < maxNoNewResults) {
         // Extract visible businesses
         logger.info(`Extracting businesses from current view...`);
         const newBusinesses = await this.extractBusinessesFromPage(page);
