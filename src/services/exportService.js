@@ -22,7 +22,14 @@ class ExportService {
         }
     }
 
-    async exportTaskResults(taskId) {
+    /**
+     * Export task results with proper handling of random category data
+     * @param {string} taskId - Task ID
+     * @param {Array} columns - Selected columns
+     * @param {boolean} isRandom - Whether this is a random category task
+     * @returns {Object} Export result
+     */
+    async exportTaskResults(taskId, columns = null, isRandom = false) {
         try {
             // Get task information
             const task = await db.getOne('SELECT * FROM scraping_tasks WHERE id = $1', [taskId]);
@@ -31,22 +38,49 @@ class ExportService {
                 throw new Error('Task not found');
             }
 
-            // Get businesses for this task - no limit to get all
-            // FIXED: Removed potential restrictions in query
-            const businesses = await db.getMany(
-                'SELECT * FROM business_listings WHERE task_id = $1 ORDER BY name',
+            // Check if this is a random category task
+            let isRandomTask = isRandom;
+            if (!isRandomTask) {
+                isRandomTask = await this.isRandomCategoryTask(taskId);
+            }
+            
+            logger.info(`Exporting task ${taskId}, isRandomTask: ${isRandomTask}`);
+
+            let businesses = [];
+            const exportSource = isRandomTask ? 'random_category_leads' : 'business_listings';
+            
+            // Get businesses from the appropriate table based on task type
+            logger.info(`Fetching data from ${exportSource} table for task ${taskId}`);
+            businesses = await db.getMany(
+                `SELECT * FROM ${exportSource} WHERE task_id = $1 ORDER BY name`,
                 [taskId]
             );
+            
+            if (businesses.length === 0) {
+                // If no businesses found in the primary source, try the other table
+                const fallbackSource = isRandomTask ? 'business_listings' : 'random_category_leads';
+                logger.info(`No businesses found. Attempting fallback to ${fallbackSource} table`);
+                
+                businesses = await db.getMany(
+                    `SELECT * FROM ${fallbackSource} WHERE task_id = $1 ORDER BY name`,
+                    [taskId]
+                );
+            }
 
             if (businesses.length === 0) {
                 throw new Error('No businesses found for this task');
             }
 
-            const filename = `${task.search_term.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            logger.info(`Found ${businesses.length} businesses for export from task ${taskId}`);
+
+            // Build task name with search term for file name
+            const searchTerm = task.search_term.replace(/[^a-zA-Z0-9]/g, '_');
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `${searchTerm}_${timestamp}.xlsx`;
             const filepath = path.join(this.exportDirectory || '.', filename);
 
-            // Create Excel file
-            await this.createExcelFile(businesses, filepath);
+            // Create Excel file with selected columns
+            await this.createExcelFile(businesses, filepath, columns);
 
             return {
                 filename,
@@ -154,7 +188,7 @@ class ExportService {
         }
     }
 
-    async exportFilteredBusinesses(filter = {}) {
+    async exportFilteredBusinesses(filter = {}, columns = null) {
         try {
             // FIXED: Clean up filter object and log it clearly
             const cleanFilter = {};
@@ -256,6 +290,20 @@ class ExportService {
             // FIXED: No LIMIT to get all records
             query += ' ORDER BY name';
 
+            // Phone filter - ADD THIS PART
+            if (cleanFilter.hasPhone === true) {
+                query += ` AND phone IS NOT NULL AND phone != ''`;
+            } else if (cleanFilter.hasPhone === false) {
+                query += ` AND (phone IS NULL OR phone = '')`;
+            }
+
+            // Address filter - ADD THIS PART
+            if (cleanFilter.hasAddress === true) {
+                query += ` AND address IS NOT NULL AND address != ''`;
+            } else if (cleanFilter.hasAddress === false) {
+                query += ` AND (address IS NULL OR address = '')`;
+            }
+
             logger.info(`Final export query: ${query.substring(0, 200)}... with ${params.length} parameters`);
 
             // Execute the query with a timeout increase for large datasets
@@ -309,8 +357,8 @@ class ExportService {
             const filename = `Filtered_Businesses_${dateTime}.xlsx`;
             const filepath = path.join(this.exportDirectory || '.', filename);
 
-            // FIXED: Enhanced Excel file creation with better email handling
-            await this.createExcelFile(businesses, filepath);
+            // Use new method with column selection
+            await this.createExcelFile(businesses, filepath, columns);
 
             return {
                 filename,
@@ -425,8 +473,14 @@ class ExportService {
         });
     }
 
-    // Create professional Excel file with formatting
-    async createExcelFile(businesses, filepath) {
+    /**
+     * Create Excel file with selected columns and formatted data
+     * @param {Array} businesses - Business data
+     * @param {string} filepath - Path to save Excel file
+     * @param {Array} selectedColumns - Columns to include
+     * @returns {string} Path to created file
+     */
+    async createExcelFile(businesses, filepath, selectedColumns = null) {
         try {
             if (typeof window !== 'undefined') {
                 // In browser environment, we can't write files
@@ -438,80 +492,150 @@ class ExportService {
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('Business Leads');
 
-            // Setup worksheet columns and header style
-            this.setupExcelWorksheet(worksheet);
+            // Define all possible columns
+            const allColumns = [
+                { header: 'Business Name', key: 'name', width: 30 },
+                { header: 'Email', key: 'email', width: 30 },
+                { header: 'Phone', key: 'phone', width: 20 },
+                { header: 'Formatted Phone', key: 'formattedPhone', width: 20 },
+                { header: 'Website', key: 'website', width: 30 },
+                { header: 'Address', key: 'address', width: 30 },
+                { header: 'City', key: 'city', width: 20 },
+                { header: 'State', key: 'state', width: 10 },
+                { header: 'Country', key: 'country', width: 15 },
+                { header: 'Postal Code', key: 'postal_code', width: 15 },
+                { header: 'Category', key: 'category', width: 20 },
+                { header: 'Search Term', key: 'search_term', width: 20 },
+                { header: 'Rating', key: 'rating', width: 10 },
+                { header: 'Notes', key: 'notes', width: 30 },
+                { header: 'Created', key: 'created_at', width: 20 }
+            ];
+            
+            // Filter columns based on selection or use all
+            const columnsToUse = selectedColumns ? 
+                allColumns.filter(col => selectedColumns.includes(col.key)) : 
+                allColumns;
+                
+            // Assign columns to worksheet
+            worksheet.columns = columnsToUse;
 
-            // FIXED: Track email statistics for all records
-            let totalEmailCount = 0;
+            // Style the header row
+            worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            worksheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF4F46E5' } // Primary color
+            };
+            worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
-            // Pre-scan data to check email fields - helps diagnose issues
-            for (const business of businesses) {
-                if (business.email && business.email.trim() !== '') {
-                    totalEmailCount++;
-                }
-            }
-
-            logger.info(`Email statistics: ${totalEmailCount} out of ${businesses.length} records have emails (${((totalEmailCount / businesses.length) * 100).toFixed(1)}%)`);
-
-            // Process data in chunks to prevent memory issues with large datasets
-            const CHUNK_SIZE = 500; // Smaller chunks to prevent memory issues
+            // Process data in chunks for large datasets
+            const CHUNK_SIZE = 500;
             const totalChunks = Math.ceil(businesses.length / CHUNK_SIZE);
-
-            logger.info(`Processing ${businesses.length} records in ${totalChunks} chunks of ${CHUNK_SIZE} records each`);
-
+            
+            logger.info(`Processing ${businesses.length} records in ${totalChunks} chunks`);
+            
             let totalRowsAdded = 0;
-
-            // Process in chunks with more frequent release of memory
+            let emailsAdded = 0;
+            let phonesFormatted = 0;
+            let invalidPhones = 0;
+            
             for (let i = 0; i < totalChunks; i++) {
                 const startIdx = i * CHUNK_SIZE;
                 const endIdx = Math.min((i + 1) * CHUNK_SIZE, businesses.length);
                 const chunk = businesses.slice(startIdx, endIdx);
-
-                logger.info(`Processing chunk ${i + 1}/${totalChunks}: records ${startIdx + 1} to ${endIdx} (${chunk.length} records)`);
-
-                // Add this chunk of data to the worksheet
-                this.addBusinessRowsToWorksheet(worksheet, chunk);
-                totalRowsAdded += chunk.length;
-
-                // Log progress
-                if (i % 2 === 0 || i === totalChunks - 1) {
-                    logger.info(`Progress: ${Math.round((totalRowsAdded / businesses.length) * 100)}% complete (${totalRowsAdded}/${businesses.length} records)`);
+                
+                // Add rows with proper data and formatting
+                for (const business of chunk) {
+                    try {
+                        // Make sure we're not processing a '[null]' phone value
+                        const rawPhone = business.phone === '[null]' ? '' : business.phone;
+                        
+                        // Format the phone number
+                        const formattedPhone = this.formatPhoneNumber(rawPhone);
+                        if (formattedPhone) phonesFormatted++;
+                        if (rawPhone && !formattedPhone) invalidPhones++;
+                        
+                        // Track email statistics
+                        if (business.email && business.email.trim() !== '') emailsAdded++;
+                        
+                        // For random category leads, use category field instead of search_term if available
+                        const category = business.category || business.search_term || '';
+                        
+                        // Create row data object with all possible fields
+                        const rowData = {
+                            name: business.name || '',
+                            email: business.email || '',
+                            phone: rawPhone || '', // Use cleaned phone value
+                            formattedPhone: formattedPhone, // Add the formatted phone
+                            website: business.website || '',
+                            address: business.address || '',
+                            city: business.city || '',
+                            state: business.state || '',
+                            country: business.country || '',
+                            postal_code: business.postal_code || '',
+                            category: category, // Use category field with fallback
+                            search_term: business.search_term || '',
+                            rating: business.rating || '',
+                            notes: business.notes || '',
+                            created_at: business.created_at ? new Date(business.created_at).toLocaleString() : ''
+                        };
+                        
+                        // Add row to worksheet (will only include columns that were specified)
+                        const row = worksheet.addRow(rowData);
+                        
+                        // Add alternating row colors
+                        if (row.number % 2 === 0) {
+                            row.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFF9F9F9' }
+                            };
+                        }
+                    } catch (error) {
+                        logger.error(`Error processing record: ${error.message}`);
+                    }
                 }
-
-                // Release memory after each chunk
+                
+                totalRowsAdded += chunk.length;
+                if (i % 5 === 0 || i === totalChunks - 1) {
+                    logger.info(`Processed ${totalRowsAdded}/${businesses.length} records (${Math.round((totalRowsAdded / businesses.length) * 100)}%)`);
+                }
+                
+                // Release memory
                 if (global.gc) global.gc();
             }
 
-            // Finalize the worksheet with formatting
-            this.finalizeExcelWorksheet(worksheet, totalRowsAdded);
+            // Add filter to all columns
+            worksheet.autoFilter = {
+                from: { row: 1, column: 1 },
+                to: { row: 1, column: columnsToUse.length }
+            };
 
-            // Write file with error handling
-            try {
-                logger.info(`Writing Excel file to disk: ${filepath} with ${totalRowsAdded} records`);
+            // Freeze the top row
+            worksheet.views = [
+                { state: 'frozen', ySplit: 1 }
+            ];
 
-                // Set workbook properties for better compatibility
-                workbook.creator = 'Lead Generator';
-                workbook.lastModifiedBy = 'Lead Generator';
-                workbook.created = new Date();
-                workbook.modified = new Date();
-
-                // FIXED: Use buffered writing for better performance with large files
-                await workbook.xlsx.writeFile(filepath, {
-                    filename: filepath,
-                    useStyles: true,
-                    useSharedStrings: true
+            // Add borders to all cells
+            worksheet.eachRow((row, rowNumber) => {
+                row.eachCell(cell => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
                 });
+            });
 
-                // Verify file was created and has content
-                const stats = fs.statSync(filepath);
-                const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-                logger.info(`Excel file created successfully: ${filepath}, size: ${stats.size} bytes (${fileSizeMB} MB)`);
+            // Write file
+            await workbook.xlsx.writeFile(filepath);
+            
+            const stats = fs.statSync(filepath);
+            const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+            logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${totalRowsAdded}, emails: ${emailsAdded}, formatted phones: ${phonesFormatted}, invalid phones: ${invalidPhones}`);
 
-                return filepath;
-            } catch (writeError) {
-                logger.error(`Error writing Excel file to disk: ${writeError.message}`);
-                throw writeError;
-            }
+            return filepath;
         } catch (error) {
             logger.error(`Error creating Excel file: ${error.message}`);
             throw error;
@@ -767,6 +891,173 @@ class ExportService {
         } catch (error) {
             logger.error(`Error counting businesses with email: ${error.message}`);
             return 0;
+        }
+    }
+
+    /**
+     * Format phone number to standard format (12065551234)
+     * @param {string} phone - Raw phone number
+     * @returns {string} Formatted phone number
+     */
+    formatPhoneNumber(phone) {
+        // If phone is null, undefined, '[null]' or empty string, return empty string
+        if (!phone || phone === '[null]') return '';
+        
+        try {
+            // Remove all non-numeric characters
+            let cleaned = phone.replace(/\D/g, '');
+            
+            // Handle US country code case
+            if (cleaned.length === 10) {
+                // Add US country code (1) for 10-digit numbers
+                cleaned = '1' + cleaned;
+            } else if (cleaned.length > 11) {
+                // If number is longer than 11 digits, truncate to 11 (country code + 10-digit number)
+                cleaned = cleaned.substring(0, 11);
+            } else if (cleaned.length < 10 && cleaned.length > 0) {
+                // If number is too short but not empty, log as potentially invalid
+                logger.debug(`Potentially invalid phone number: ${phone} -> ${cleaned}`);
+            }
+            
+            return cleaned;
+        } catch (error) {
+            logger.error(`Error formatting phone number: ${error.message}`);
+            // Return original cleaned string if there's an error
+            return phone ? phone.replace(/\D/g, '') : '';
+        }
+    }
+
+    /**
+     * Export filtered businesses from random_category_leads table
+     * @param {Object} filter - Filter criteria
+     * @param {Array} columns - Selected columns
+     * @returns {Object} Export result
+     */
+    async exportRandomCategoryLeads(filter = {}, columns = null) {
+        try {
+            // Build query for random_category_leads table
+            let query = 'SELECT * FROM random_category_leads WHERE 1=1';
+            const params = [];
+            let paramIndex = 1;
+
+            // Add each filter condition
+            if (filter.state) {
+                query += ` AND state = $${paramIndex++}`;
+                params.push(filter.state);
+            }
+
+            if (filter.city) {
+                query += ` AND city = $${paramIndex++}`;
+                params.push(filter.city);
+            }
+
+            if (filter.searchTerm) {
+                query += ` AND category = $${paramIndex++}`;
+                params.push(filter.searchTerm);
+            }
+
+            // Email filter
+            if (filter.hasEmail === true) {
+                query += ` AND email IS NOT NULL AND email != ''`;
+            } else if (filter.hasEmail === false) {
+                query += ` AND (email IS NULL OR email = '')`;
+            }
+
+            // Website filter
+            if (filter.hasWebsite === true) {
+                query += ` AND website IS NOT NULL AND website != ''`;
+            } else if (filter.hasWebsite === false) {
+                query += ` AND (website IS NULL OR website = '')`;
+            }
+
+            // Phone filter - Now properly handling '[null]' value
+            if (filter.hasPhone === true) {
+                query += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
+            } else if (filter.hasPhone === false) {
+                query += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
+            } else if (filter.excludeNullPhone === true) {
+                // Special filter to exclude '[null]' phone values but include valid phones or empty values
+                query += ` AND phone != '[null]'`;
+            }
+
+            // Address filter
+            if (filter.hasAddress === true) {
+                query += ` AND address IS NOT NULL AND address != ''`;
+            } else if (filter.hasAddress === false) {
+                query += ` AND (address IS NULL OR address = '')`;
+            }
+
+            // Category filters for inclusion/exclusion
+            if (filter.includeCategories && filter.includeCategories.length > 0) {
+                const placeholders = filter.includeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
+                query += ` AND category IN (${placeholders})`;
+                params.push(...filter.includeCategories);
+                paramIndex += filter.includeCategories.length;
+            }
+
+            if (filter.excludeCategories && filter.excludeCategories.length > 0) {
+                const placeholders = filter.excludeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
+                query += ` AND category NOT IN (${placeholders})`;
+                params.push(...filter.excludeCategories);
+                paramIndex += filter.excludeCategories.length;
+            }
+
+            // Rating filter
+            if (filter.minRating) {
+                query += ` AND rating >= $${paramIndex++}`;
+                params.push(parseFloat(filter.minRating));
+            }
+
+            // Keywords filter
+            if (filter.keywords) {
+                const keywords = filter.keywords.split(',').map(k => k.trim()).filter(Boolean);
+                if (keywords.length > 0) {
+                    query += ' AND (';
+                    const conditions = [];
+                    for (const keyword of keywords) {
+                        conditions.push(`(name ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`);
+                        params.push(`%${keyword}%`);
+                        paramIndex++;
+                    }
+                    query += conditions.join(' OR ') + ')';
+                }
+            }
+
+            // Add order by clause
+            query += ' ORDER BY name';
+
+            // Execute query
+            logger.info(`Executing random_category_leads query: ${query.substring(0, 200)}...`);
+            logger.info(`With parameters: ${JSON.stringify(params)}`);
+            
+            const businesses = await db.getMany(query, params);
+
+            if (businesses.length === 0) {
+                logger.warn(`No random category leads found matching filter criteria`);
+                return {
+                    filename: 'No_Results.xlsx',
+                    filepath: '',
+                    count: 0,
+                    isEmpty: true
+                };
+            }
+
+            // Create filename
+            const dateTime = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+            const filename = `Random_Category_Leads_${dateTime}.xlsx`;
+            const filepath = path.join(this.exportDirectory || '.', filename);
+
+            // Create Excel file with specified columns
+            await this.createExcelFile(businesses, filepath, columns);
+
+            return {
+                filename,
+                filepath,
+                count: businesses.length
+            };
+        } catch (error) {
+            logger.error(`Error exporting random category leads: ${error.message}`);
+            throw error;
         }
     }
 }

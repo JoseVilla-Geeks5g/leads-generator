@@ -15630,3 +15630,5 @@ Call log:
 Call log:
 [2m  - navigating to "https://www.google.com/maps", waiting until "networkidle"[22m
 
+[2025-04-09T20:53:20.549Z] [ERROR] Database query error: timeout exceeded when trying to connect
+[2025-04-09T20:53:20.549Z] [ERROR] Error fetching categories: timeout exceeded when trying to connect

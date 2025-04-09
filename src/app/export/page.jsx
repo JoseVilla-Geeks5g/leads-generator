@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import SearchableSelect from '@/components/controls/SearchableSelect';
+import ColumnSelector from '@/components/export/ColumnSelector';
 
 export default function ExportPage() {
     const [isLoading, setIsLoading] = useState(false);
@@ -12,6 +13,7 @@ export default function ExportPage() {
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [excludedCategories, setExcludedCategories] = useState([]);
     const [states, setStates] = useState([]);
+    const [cities, setCities] = useState([]);
     const [stats, setStats] = useState(null);
     const [exportInProgress, setExportInProgress] = useState(false);
     const [lastExportResult, setLastExportResult] = useState(null);
@@ -19,11 +21,36 @@ export default function ExportPage() {
     const [exportEstimate, setExportEstimate] = useState(null);
     const router = useRouter();
 
+    // Available columns and their selection state
+    const [availableColumns, setAvailableColumns] = useState([
+        { key: 'name', label: 'Business Name' },
+        { key: 'email', label: 'Email' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'formattedPhone', label: 'Formatted Phone (12065551234)' },
+        { key: 'website', label: 'Website' },
+        { key: 'address', label: 'Address' },
+        { key: 'city', label: 'City' },
+        { key: 'state', label: 'State' },
+        { key: 'country', label: 'Country' },
+        { key: 'category', label: 'Category' },
+        { key: 'rating', label: 'Rating' },
+        { key: 'search_term', label: 'Search Term' },
+        { key: 'postal_code', label: 'Postal Code' },
+        { key: 'notes', label: 'Notes' },
+    ]);
+    
+    // Default selected columns
+    const [selectedColumns, setSelectedColumns] = useState([
+        'name', 'email', 'phone', 'formattedPhone', 'website', 'address', 'city', 'state'
+    ]);
+
     // Export options
     const [exportOptions, setExportOptions] = useState({
-        type: 'all', // all, filtered, category, state, random
+        type: 'all', // all, filtered, category, state, random, task
         hasEmail: null, // true, false, null (any)
         hasWebsite: null, // true, false, null (any)
+        hasPhone: null, // true, false, null (any)
+        hasAddress: null, // true, false, null (any)
         category: '',
         state: '',
         city: '',
@@ -32,7 +59,9 @@ export default function ExportPage() {
         contactLimit: 200, // Default is 200 per category
         randomEnabled: false,
         randomCategoryCount: 5,
-        keywordsInput: ''
+        keywordsInput: '',
+        dataSource: 'business_listings', // Default source is business_listings
+        excludeNullPhone: false // Option to exclude '[null]' phone values
     });
 
     // Fetch categories, states and stats on component mount
@@ -65,6 +94,29 @@ export default function ExportPage() {
 
         fetchInitialData();
     }, []);
+
+    // Fetch cities when state changes
+    useEffect(() => {
+        const fetchCities = async () => {
+            if (!exportOptions.state) {
+                setCities([]);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/cities?state=${exportOptions.state}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setCities(data.cities || []);
+                }
+            } catch (error) {
+                console.error('Error fetching cities:', error);
+                setCities([]);
+            }
+        };
+
+        fetchCities();
+    }, [exportOptions.state]);
 
     const addCategory = (category) => {
         if (!selectedCategories.includes(category)) {
@@ -138,12 +190,21 @@ export default function ExportPage() {
 
         // Add state if selected
         if (exportOptions.type === 'state' && exportOptions.state) {
-            return { state: exportOptions.state };
+            return { 
+                state: exportOptions.state,
+                columns: selectedColumns,
+                dataSource: exportOptions.dataSource 
+            };
         }
 
         // Add task ID if selected
         if (exportOptions.type === 'task' && exportOptions.taskId) {
-            return { taskId: exportOptions.taskId };
+            return { 
+                taskId: exportOptions.taskId,
+                columns: selectedColumns,
+                dataSource: exportOptions.dataSource,
+                isRandom: exportOptions.dataSource === 'random_category_leads'
+            };
         }
 
         // For random categories
@@ -155,11 +216,15 @@ export default function ExportPage() {
                 filter: {
                     hasEmail: exportOptions.hasEmail,
                     hasWebsite: exportOptions.hasWebsite,
+                    hasPhone: exportOptions.hasPhone,
+                    hasAddress: exportOptions.hasAddress,
                     state: exportOptions.state || undefined,
                     city: exportOptions.city || undefined,
                     minRating: exportOptions.minRating ? parseFloat(exportOptions.minRating) : undefined,
                     keywords: exportOptions.keywordsInput || undefined
-                }
+                },
+                columns: selectedColumns,
+                dataSource: exportOptions.dataSource
             };
         }
 
@@ -178,13 +243,27 @@ export default function ExportPage() {
             }
         }
 
-        // Add email/website filters
+        // Add email/website/phone/address filters
         if (exportOptions.hasEmail !== null) {
             filter.hasEmail = exportOptions.hasEmail;
         }
 
         if (exportOptions.hasWebsite !== null) {
             filter.hasWebsite = exportOptions.hasWebsite;
+        }
+
+        // Add phone filter - explicitly use triple equals for null check
+        if (exportOptions.hasPhone !== null) {
+            filter.hasPhone = exportOptions.hasPhone;
+            // Log to verify the value
+            console.log('Adding hasPhone filter:', exportOptions.hasPhone);
+        }
+
+        // Add address filter - explicitly use triple equals for null check
+        if (exportOptions.hasAddress !== null) {
+            filter.hasAddress = exportOptions.hasAddress;
+            // Log to verify the value
+            console.log('Adding hasAddress filter:', exportOptions.hasAddress);
         }
 
         // Add state/city filters
@@ -215,7 +294,11 @@ export default function ExportPage() {
 
         return {
             filter: Object.keys(filter).length > 0 ? filter : null,
-            forceUnfiltered
+            forceUnfiltered,
+            columns: selectedColumns,
+            formatPhone: true, // Ensure phone formatting is always enabled
+            dataSource: exportOptions.dataSource,
+            excludeNullPhone: exportOptions.excludeNullPhone // Add option to exclude [null] phone values
         };
     };
 
@@ -232,7 +315,7 @@ export default function ExportPage() {
                 }
             }
 
-            // Build the request
+            // Build the request with columns selection
             const requestBody = buildExportRequest();
 
             // Make the API request
@@ -280,6 +363,8 @@ export default function ExportPage() {
             type: 'all',
             hasEmail: null,
             hasWebsite: null,
+            hasPhone: null,
+            hasAddress: null,
             category: '',
             state: '',
             city: '',
@@ -288,12 +373,14 @@ export default function ExportPage() {
             contactLimit: 200,
             randomEnabled: false,
             randomCategoryCount: 5,
-            keywordsInput: ''
+            keywordsInput: '',
+            dataSource: 'all'
         });
         setSelectedCategories([]);
         setExcludedCategories([]);
         setLastExportResult(null);
         setExportEstimate(null);
+        setSelectedColumns(['name', 'email', 'phone', 'formattedPhone', 'website', 'address', 'city', 'state']);
     };
 
     return (
@@ -496,6 +583,25 @@ export default function ExportPage() {
                                                 </select>
                                                 <span className="material-icons absolute left-3 top-3 text-gray-400">map</span>
                                             </div>
+                                            
+                                            {exportOptions.state && cities.length > 0 && (
+                                                <div className="mt-3">
+                                                    <label className="block text-sm font-medium mb-2">Select City (Optional)</label>
+                                                    <div className="relative">
+                                                        <select
+                                                            className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                                            value={exportOptions.city || ''}
+                                                            onChange={(e) => handleOptionChange('city', e.target.value)}
+                                                        >
+                                                            <option value="">All Cities in {exportOptions.state}</option>
+                                                            {cities.map(city => (
+                                                                <option key={city} value={city}>{city}</option>
+                                                            ))}
+                                                        </select>
+                                                        <span className="material-icons absolute left-3 top-3 text-gray-400">location_city</span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -618,6 +724,22 @@ export default function ExportPage() {
                                         </div>
                                     )}
 
+                                    {/* Column Selection */}
+                                    <div className="mb-6">
+                                        <h3 className="text-md font-medium mb-4 border-b border-light pb-2">Column Selection</h3>
+                                        
+                                        <ColumnSelector
+                                            columns={availableColumns}
+                                            selectedColumns={selectedColumns}
+                                            onChange={setSelectedColumns}
+                                        />
+                                        
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            <span className="material-icons text-xs align-middle mr-1">info</span>
+                                            "Formatted Phone" column exports phone numbers in E.164 format (12065551234) for direct use in marketing tools.
+                                        </p>
+                                    </div>
+
                                     {/* Additional Filters */}
                                     <div className="mb-6">
                                         <h3 className="text-md font-medium mb-4 border-b border-light pb-2">Additional Filters</h3>
@@ -669,17 +791,76 @@ export default function ExportPage() {
                                                 </div>
                                             </div>
 
+                                            {/* Phone Filter */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2">Phone Status</label>
+                                                <div className="relative">
+                                                    <select
+                                                        className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                                        value={exportOptions.hasPhone === null ? '' : exportOptions.hasPhone.toString()}
+                                                        onChange={(e) => {
+                                                            if (e.target.value === '') {
+                                                                handleOptionChange('hasPhone', null);
+                                                            } else {
+                                                                handleOptionChange('hasPhone', e.target.value === 'true');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="">All (with or without phone)</option>
+                                                        <option value="true">Has Valid Phone Number</option>
+                                                        <option value="false">No Valid Phone Number</option>
+                                                    </select>
+                                                    <span className="material-icons absolute left-3 top-3 text-gray-400">phone</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Address Filter */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2">Address Status</label>
+                                                <div className="relative">
+                                                    <select
+                                                        className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                                        value={exportOptions.hasAddress === null ? '' : exportOptions.hasAddress.toString()}
+                                                        onChange={(e) => {
+                                                            if (e.target.value === '') {
+                                                                handleOptionChange('hasAddress', null);
+                                                            } else {
+                                                                handleOptionChange('hasAddress', e.target.value === 'true');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="">All (with or without address)</option>
+                                                        <option value="true">Has Address</option>
+                                                        <option value="false">No Address</option>
+                                                    </select>
+                                                    <span className="material-icons absolute left-3 top-3 text-gray-400">home</span>
+                                                </div>
+                                            </div>
+
                                             {/* City Filter */}
                                             <div>
                                                 <label className="block text-sm font-medium mb-2">City</label>
                                                 <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Filter by city..."
-                                                        className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
-                                                        value={exportOptions.city || ''}
-                                                        onChange={(e) => handleOptionChange('city', e.target.value)}
-                                                    />
+                                                    {cities.length > 0 ? (
+                                                        <select
+                                                            className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                                            value={exportOptions.city || ''}
+                                                            onChange={(e) => handleOptionChange('city', e.target.value)}
+                                                        >
+                                                            <option value="">All Cities</option>
+                                                            {cities.map(city => (
+                                                                <option key={city} value={city}>{city}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Filter by city..."
+                                                            className="w-full p-3 pl-10 border border-light rounded-md focus:ring-primary focus:border-primary shadow-sm"
+                                                            value={exportOptions.city || ''}
+                                                            onChange={(e) => handleOptionChange('city', e.target.value)}
+                                                        />
+                                                    )}
                                                     <span className="material-icons absolute left-3 top-3 text-gray-400">location_city</span>
                                                 </div>
                                             </div>
@@ -756,13 +937,76 @@ export default function ExportPage() {
                                                             className="mr-2 accent-primary h-4 w-4"
                                                             checked={exportOptions.format === 'csv'}
                                                             onChange={() => handleOptionChange('format', 'csv')}
-                                                            disabled={true}
                                                         />
-                                                        <span className="text-sm opacity-50">CSV (Coming soon)</span>
+                                                        <span className="text-sm">CSV</span>
                                                     </label>
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Data Source Selection */}
+                                    <div className="mb-6">
+                                        <h3 className="text-md font-medium mb-4 border-b border-light pb-2">Data Source</h3>
+                                        
+                                        <div className="flex gap-3">
+                                            <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${exportOptions.dataSource === 'all' ? 'bg-primary-light' : 'bg-accent'}`}>
+                                                <input
+                                                    type="radio"
+                                                    className="mr-2 accent-primary h-4 w-4"
+                                                    checked={exportOptions.dataSource === 'all'}
+                                                    onChange={() => handleOptionChange('dataSource', 'all')}
+                                                />
+                                                <div>
+                                                    <div className="text-sm font-medium">All Sources</div>
+                                                    <div className="text-xs text-gray-500">Combine data from all tables</div>
+                                                </div>
+                                            </label>
+
+                                            <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${exportOptions.dataSource === 'business_listings' ? 'bg-primary-light' : 'bg-accent'}`}>
+                                                <input
+                                                    type="radio"
+                                                    className="mr-2 accent-primary h-4 w-4"
+                                                    checked={exportOptions.dataSource === 'business_listings'}
+                                                    onChange={() => handleOptionChange('dataSource', 'business_listings')}
+                                                />
+                                                <div>
+                                                    <div className="text-sm font-medium">Main Listings</div>
+                                                    <div className="text-xs text-gray-500">Main business listings table</div>
+                                                </div>
+                                            </label>
+
+                                            <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${exportOptions.dataSource === 'random_category_leads' ? 'bg-primary-light' : 'bg-accent'}`}>
+                                                <input
+                                                    type="radio"
+                                                    className="mr-2 accent-primary h-4 w-4"
+                                                    checked={exportOptions.dataSource === 'random_category_leads'}
+                                                    onChange={() => handleOptionChange('dataSource', 'random_category_leads')}
+                                                />
+                                                <div>
+                                                    <div className="text-sm font-medium">Random Categories</div>
+                                                    <div className="text-xs text-gray-500">Random category leads table</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                        
+                                        {/* Special option for phone handling when random_category_leads is selected */}
+                                        {exportOptions.dataSource === 'random_category_leads' && (
+                                            <div className="mt-3">
+                                                <label className="flex items-center space-x-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-checkbox h-4 w-4 text-primary"
+                                                        checked={exportOptions.excludeNullPhone}
+                                                        onChange={(e) => handleOptionChange('excludeNullPhone', e.target.checked)}
+                                                    />
+                                                    <span className="text-sm">Exclude invalid phone entries marked as [null]</span>
+                                                </label>
+                                                <p className="text-xs text-gray-500 mt-1 ml-6">
+                                                    This filters out entries with placeholder [null] phone values but includes records with no phone data
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Export Button */}
@@ -787,7 +1031,7 @@ export default function ExportPage() {
 
                                         <button
                                             onClick={startExport}
-                                            disabled={exportInProgress || (exportEstimate && exportEstimate.count === 0)}
+                                            disabled={exportInProgress || (exportEstimate && exportEstimate.count === 0) || selectedColumns.length === 0}
                                             className="btn btn-primary px-6 py-2.5 flex items-center shadow-md hover:shadow-lg"
                                         >
                                             {exportInProgress ? (
@@ -891,8 +1135,16 @@ export default function ExportPage() {
                                         <div className="flex">
                                             <span className="material-icons text-primary mr-3">lightbulb</span>
                                             <div>
-                                                <p className="font-medium">Export by State</p>
-                                                <p className="text-gray-500">State-specific exports work well for targeted regional campaigns.</p>
+                                                <p className="font-medium">Phone Formatting</p>
+                                                <p className="text-gray-500">Use the "Formatted Phone" column to get phone numbers in clean format (12065551234) ready for SMS.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex">
+                                            <span className="material-icons text-primary mr-3">lightbulb</span>
+                                            <div>
+                                                <p className="font-medium">Filter by State & City</p>
+                                                <p className="text-gray-500">Use the location filters to create targeted local marketing campaigns.</p>
                                             </div>
                                         </div>
 
@@ -901,14 +1153,6 @@ export default function ExportPage() {
                                             <div>
                                                 <p className="font-medium">Random Categories</p>
                                                 <p className="text-gray-500">Use random categories mode to discover new lead opportunities.</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex">
-                                            <span className="material-icons text-primary mr-3">lightbulb</span>
-                                            <div>
-                                                <p className="font-medium">Large Exports</p>
-                                                <p className="text-gray-500">For exports with over 10,000 records, consider using multiple smaller exports.</p>
                                             </div>
                                         </div>
                                     </div>

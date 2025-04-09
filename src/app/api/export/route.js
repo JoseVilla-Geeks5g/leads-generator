@@ -6,11 +6,26 @@ import fs from 'fs';
 
 export async function POST(request) {
     try {
+        // Parse request body
+        const body = await request.json();
+        
+        // Extract params
+        const { 
+            filter = null, 
+            forceUnfiltered = false, 
+            taskId = null, 
+            state = null,
+            columns = null, // Add support for column selection
+            isRandom = false, // Support for random category leads
+            dataSource = 'business_listings',  // Default to business_listings table
+            excludeNullPhone = false  // Option to exclude '[null]' phone values
+        } = body;
+
         logger.info('Export request received');
         const start = Date.now();
 
-        const body = await request.json();
-        const { taskId, state, filter, forceUnfiltered, isRandomCategoryTask } = body;
+        // Log the data source parameter
+        logger.info(`Export parameters: taskId=${taskId}, state=${state}, isRandom=${isRandom}, dataSource=${dataSource}, excludeNullPhone=${excludeNullPhone}`);
 
         // FIXED: Properly log filter values with explicit types for debugging
         logger.info(`Export parameters received: 
@@ -18,7 +33,7 @@ export async function POST(request) {
             state=${state !== undefined ? state : 'undefined'}, 
             filter=${filter ? JSON.stringify(filter) : 'undefined'}, 
             forceUnfiltered=${forceUnfiltered !== undefined ? forceUnfiltered : 'undefined'},
-            isRandomCategoryTask=${isRandomCategoryTask !== undefined ? isRandomCategoryTask : 'undefined'}`);
+            isRandomCategoryTask=${isRandom !== undefined ? isRandom : 'undefined'}`);
 
         // Initialize database
         await db.init();
@@ -28,7 +43,7 @@ export async function POST(request) {
             startTime: new Date().toISOString(),
             totalBusinessCount: await exportService.getTotalCount(),
             emailCount: await exportService.countBusinessesWithEmail(),
-            requestParams: { taskId, state, filter, forceUnfiltered, isRandomCategoryTask }
+            requestParams: { taskId, state, filter, forceUnfiltered, isRandom }
         };
 
         // FIXED: Clean filter to ensure no null values 
@@ -43,14 +58,38 @@ export async function POST(request) {
                     else cleanFilter[key] = value;
                 }
             });
+            
+            // Add the exclude null phone option if specified
+            if (excludeNullPhone) {
+                cleanFilter.excludeNullPhone = true;
+            }
+            
+            // Log all filter keys for debugging
+            logger.info(`Filter keys: ${Object.keys(cleanFilter).join(', ')}`);
             diagnostics.cleanFilter = cleanFilter;
         }
 
         let result;
+        const downloadHost = process.env.NEXT_PUBLIC_APP_URL || 
+                             process.env.VERCEL_URL || 
+                             'http://localhost:3000';
+
         try {
-            if (taskId) {
-                // Export task results - check if it's a random category task
-                logger.info(`Exporting data for task: ${taskId}, isRandomCategoryTask=${isRandomCategoryTask}`);
+            // Special case for random_category_leads export
+            if (dataSource === 'random_category_leads') {
+                logger.info('Exporting from random_category_leads table');
+                
+                if (cleanFilter && Object.keys(cleanFilter).length > 0) {
+                    result = await exportService.exportRandomCategoryLeads(cleanFilter, columns);
+                } else {
+                    // No filters - export all random category leads
+                    result = await exportService.exportRandomCategoryLeads({}, columns);
+                }
+            }
+            // Regular cases - handle with existing code paths
+            else if (taskId) {
+                // Task-specific export - pass data source via isRandom flag
+                logger.info(`Exporting data for task: ${taskId}, isRandom=${isRandom || dataSource === 'random_category_leads'}`);
 
                 // Verify task exists before exporting
                 const task = await exportService.getTaskById(taskId);
@@ -70,27 +109,22 @@ export async function POST(request) {
                     );
                 }
 
-                // Check if this is a random category task
-                const isRandom = isRandomCategoryTask || await exportService.isRandomCategoryTask(taskId);
-                
-                if (isRandom) {
-                    result = await exportService.exportRandomCategoryTaskResults(taskId);
-                } else {
-                    result = await exportService.exportTaskResults(taskId);
-                }
+                // Use isRandom flag or data source parameter
+                const useRandomSource = isRandom || dataSource === 'random_category_leads';
+                result = await exportService.exportTaskResults(taskId, columns, useRandomSource);
             } else if (state) {
-                // Export by state
+                // State-specific export
                 logger.info(`Exporting data for state: ${state}`);
 
                 // Check if state has any data
                 const stateCount = await exportService.getCountByState(state);
                 diagnostics.stateCount = stateCount;
 
-                result = await exportService.exportBusinessesByState(state);
-            } else if (forceUnfiltered === true) {
-                // FIXED: Always use optimized unfiltered export for full exports
+                result = await exportService.exportBusinessesByState(state, columns);
+            } else if (forceUnfiltered) {
+                // Unfiltered export (all records)
                 logger.info('Using optimized unfiltered export method');
-                result = await exportService.exportAllBusinessesUnfiltered();
+                result = await exportService.exportAllBusinessesUnfiltered(columns);
             } else if (cleanFilter && Object.keys(cleanFilter).length > 0) {
                 // FIXED: Use clean filter for filtered exports
                 logger.info(`Exporting filtered data with cleaned filters: ${JSON.stringify(cleanFilter)}`);
@@ -104,6 +138,8 @@ export async function POST(request) {
                 const isEmptyFilter = !cleanFilter.state && !cleanFilter.city && !cleanFilter.searchTerm &&
                     cleanFilter.hasEmail !== true && cleanFilter.hasEmail !== false &&
                     cleanFilter.hasWebsite !== true && cleanFilter.hasWebsite !== false &&
+                    cleanFilter.hasPhone !== true && cleanFilter.hasPhone !== false &&
+                    cleanFilter.hasAddress !== true && cleanFilter.hasAddress !== false &&
                     (!cleanFilter.keywords || cleanFilter.keywords.trim() === '') &&
                     (!cleanFilter.includeCategories || cleanFilter.includeCategories.length === 0) &&
                     (!cleanFilter.excludeCategories || cleanFilter.excludeCategories.length === 0) &&
@@ -111,9 +147,9 @@ export async function POST(request) {
 
                 if (isEmptyFilter) {
                     logger.info('Filter is effectively empty, using unfiltered export method');
-                    result = await exportService.exportAllBusinessesUnfiltered();
+                    result = await exportService.exportAllBusinessesUnfiltered(columns);
                 } else {
-                    result = await exportService.exportFilteredBusinesses(cleanFilter);
+                    result = await exportService.exportFilteredBusinesses(cleanFilter, columns);
                 }
             } else {
                 // No filter provided - export all
@@ -122,7 +158,7 @@ export async function POST(request) {
                 const totalCount = await exportService.getTotalCount();
                 diagnostics.totalCount = totalCount;
 
-                result = await exportService.exportAllBusinesses();
+                result = await exportService.exportAllBusinesses(columns);
             }
         } catch (error) {
             // Check if this is a "no data" error
@@ -169,20 +205,32 @@ export async function POST(request) {
                 message: 'Export completed but no records were found matching your criteria',
                 filename: result.filename,
                 count: 0,
-                downloadUrl: `/api/export/download?file=${encodeURIComponent(result.filename)}`,
+                downloadUrl: `${downloadHost}/api/export/download?file=${encodeURIComponent(result.filename)}`,
                 diagnostics
             });
         }
+
+        // Generate download URL
+        const downloadUrl = `${downloadHost}/api/export/download?file=${encodeURIComponent(result.filename)}`;
 
         return NextResponse.json({
             message: 'Export completed successfully',
             filename: result.filename,
             count: result.count,
-            downloadUrl: `/api/export/download?file=${encodeURIComponent(result.filename)}`,
+            downloadUrl,
             diagnostics
         });
     } catch (error) {
         logger.error(`Error exporting data: ${error.message}`);
+        
+        // Handle empty results differently
+        if (error.message.includes('No businesses found')) {
+            return NextResponse.json({
+                warning: error.message,
+                count: 0
+            }, { status: 200 }); // Still return 200 with warning
+        }
+
         return NextResponse.json(
             { error: 'Failed to export data', details: error.message },
             { status: 500 }
