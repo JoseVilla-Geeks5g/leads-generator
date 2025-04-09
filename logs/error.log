@@ -15640,3 +15640,4 @@ Call log:
 [2025-04-09T22:53:41.716Z] [ERROR] Error exporting data: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
 [2025-04-09T22:57:59.349Z] [ERROR] Error exporting random category leads: this.formatColumnHeader is not a function
 [2025-04-09T22:57:59.349Z] [ERROR] Error exporting data: this.formatColumnHeader is not a function
+[2025-04-09T23:24:23.129Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-23-44.xlsx

@@ -4,6 +4,17 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ColumnSelector from '../export/ColumnSelector';
 
+// Add a helper function to get the correct base URL
+function getBaseUrl() {
+    // If we're in the browser, use the current window location origin
+    if (typeof window !== 'undefined') {
+        return window.location.origin;
+    }
+    
+    // In SSR context, use the environment variable
+    return process.env.NEXT_PUBLIC_APP_URL || 'https://leads-generator-8en5.onrender.com';
+}
+
 export default function ExportButton({ taskId = null, filter = null, className = "", fullWidth = false, isRandomCategoryTask }) {
     const [isExporting, setIsExporting] = useState(false);
     const [showExportOptions, setShowExportOptions] = useState(false);
@@ -80,12 +91,26 @@ export default function ExportButton({ taskId = null, filter = null, className =
                 body: JSON.stringify(requestBody),
             });
 
-            if (!response.ok) {
+            const data = await response.json();
+            
+            if (response.ok) {
+                setExportStatus('success');
+                setMessage(`Export completed successfully with ${data.count} records.`);
+                
+                // If we got a download URL, use it directly (it should already have the correct base URL)
+                if (data.downloadUrl) {
+                    setDownloadUrl(data.downloadUrl);
+                } 
+                // Otherwise, construct one with the correct base URL
+                else if (data.filename) {
+                    const baseUrl = getBaseUrl();
+                    setDownloadUrl(`${baseUrl}/api/export/download?file=${encodeURIComponent(data.filename)}`);
+                }
+                
+            } else {
                 const errorData = await response.json();
                 throw new Error(errorData.error || errorData.warning || 'Export failed');
             }
-
-            const data = await response.json();
 
             // If there's a warning (like no records found), show it
             if (data.warning) {
