@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: leads-generator
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        fromService:
+          name: leads-generator
+          type: web
+          property: url
+      - key: PGUSER
+        value: leads_db_rc6a_user
+      - key: PGHOST
+        value: dpg-cvo56ap5pdvs739nroe0-a.oregon-postgres.render.com
+      - key: PGDATABASE
+        value: leads_db_rc6a
+      - key: PGPORT
+        value: "5432"
+      - key: PGPASSWORD
+        sync: false
+    disk:
+      name: data
+      mountPath: /app/exports
+      sizeGB: 1

@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PGUSER=${PGUSER:-leads_db_rc6a_user}
+      - PGHOST=${PGHOST:-dpg-cvo56ap5pdvs739nroe0-a.oregon-postgres.render.com}
+      - PGDATABASE=${PGDATABASE:-leads_db_rc6a}
+      - PGPASSWORD=${PGPASSWORD:-4kzEQqPy5bLBpA1pNiQVGA7VT5KeOcgT}
+      - PGPORT=${PGPORT:-5432}
+    volumes:
+      - ./exports:/app/exports
+      - ./logs:/app/logs
+    restart: unless-stopped
