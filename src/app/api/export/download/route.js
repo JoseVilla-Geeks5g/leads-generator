@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import logger from '@/services/logger';
 
+// Force dynamic to prevent static generation errors
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -17,16 +20,27 @@ export async function GET(request) {
             return new NextResponse('Invalid filename', { status: 400 });
         }
 
-        // Get the file path - make sure this is the correct directory
+        // Get the file path - ensure it's the correct directory
         const exportDirectory = path.resolve(process.cwd(), 'exports');
         const filePath = path.join(exportDirectory, filename);
         
-        logger.info(`Attempting to download file: ${filePath}`);
+        logger.info(`Download requested for file: ${filePath}`);
+
+        // Create exports directory if it doesn't exist
+        if (!fs.existsSync(exportDirectory)) {
+            fs.mkdirSync(exportDirectory, { recursive: true });
+            logger.info(`Created exports directory at: ${exportDirectory}`);
+        }
 
         // Check if file exists
         if (!fs.existsSync(filePath)) {
             logger.error(`File not found: ${filePath}`);
-            return new NextResponse('File not found', { status: 404 });
+            
+            // List available files in the exports directory
+            const availableFiles = fs.readdirSync(exportDirectory);
+            logger.info(`Available files in exports directory: ${availableFiles.join(', ')}`);
+            
+            return new NextResponse(`File not found: ${filename}`, { status: 404 });
         }
 
         // Get file info
@@ -44,13 +58,16 @@ export async function GET(request) {
             contentType = 'text/csv';
         }
 
-        // Fix: Create a direct file download response
+        // Return the file with correct headers to force a download
         return new NextResponse(fileBuffer, {
             status: 200,
             headers: {
                 'Content-Type': contentType,
                 'Content-Disposition': `attachment; filename="${filename}"`,
-                'Content-Length': stats.size.toString()
+                'Content-Length': stats.size.toString(),
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
             }
         });
     } catch (error) {
