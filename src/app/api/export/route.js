@@ -70,12 +70,8 @@ export async function POST(request) {
         }
 
         let result;
-        // Get the proper base URL for downloads:
-        // 1. Use NEXT_PUBLIC_APP_URL from environment (Render deployment URL)
-        // 2. Fallback to request origin if available
-        // 3. Final fallback to localhost
-        const downloadHost = process.env.NEXT_PUBLIC_APP_URL || 
-                           (request.headers?.get('origin') || 'https://leads-generator-8en5.onrender.com');
+        // ALWAYS use the production URL for downloads in the API response
+        const downloadHost = 'https://leads-generator-8en5.onrender.com';
 
         try {
             // Special case for random_category_leads export
@@ -236,7 +232,7 @@ export async function POST(request) {
             });
         }
 
-        // Generate download URL with the correct host
+        // Generate download URL with the FIXED production host
         const downloadUrl = `${downloadHost}/api/export/download?file=${encodeURIComponent(result.filename)}`;
 
         return NextResponse.json({

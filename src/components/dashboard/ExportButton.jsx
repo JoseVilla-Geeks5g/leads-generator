@@ -4,14 +4,9 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ColumnSelector from '../export/ColumnSelector';
 
-// Add a helper function to get the correct base URL
+// Helper function to get the correct base URL
 function getBaseUrl() {
-    // If we're in the browser, use the current window location origin
-    if (typeof window !== 'undefined') {
-        return window.location.origin;
-    }
-    
-    // In SSR context, use the environment variable
+    // In production, always use the Render URL
     return process.env.NEXT_PUBLIC_APP_URL || 'https://leads-generator-8en5.onrender.com';
 }
 
@@ -97,9 +92,14 @@ export default function ExportButton({ taskId = null, filter = null, className =
                 setExportStatus('success');
                 setMessage(`Export completed successfully with ${data.count} records.`);
                 
-                // If we got a download URL, use it directly (it should already have the correct base URL)
+                // If we got a download URL from the server, make sure it has the correct base URL
                 if (data.downloadUrl) {
-                    setDownloadUrl(data.downloadUrl);
+                    // Replace any localhost URLs with the production URL
+                    const fixedUrl = data.downloadUrl.replace(
+                        /^http:\/\/localhost:[0-9]+/,
+                        getBaseUrl()
+                    );
+                    setDownloadUrl(fixedUrl);
                 } 
                 // Otherwise, construct one with the correct base URL
                 else if (data.filename) {

@@ -15641,3 +15641,6 @@ Call log:
 [2025-04-09T22:57:59.349Z] [ERROR] Error exporting random category leads: this.formatColumnHeader is not a function
 [2025-04-09T22:57:59.349Z] [ERROR] Error exporting data: this.formatColumnHeader is not a function
 [2025-04-09T23:24:23.129Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-23-44.xlsx
+[2025-04-09T23:30:58.896Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-30-26.xlsx
+[2025-04-09T23:31:59.800Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-30-26.xlsx
+[2025-04-09T23:33:36.450Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-30-26.xlsx
