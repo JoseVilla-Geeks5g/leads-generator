@@ -935,104 +935,108 @@ class ExportService {
      */
     async exportRandomCategoryLeads(filter = {}, columns = null) {
         try {
-            // Build query for random_category_leads table
-            let query = 'SELECT * FROM random_category_leads WHERE 1=1';
-            const params = [];
+            // Create filename and filepath first
+            const dateTime = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+            const filename = `Random_Category_Leads_${dateTime}.xlsx`;
+            const filepath = path.join(this.exportDirectory || '.', filename);
+
+            // Build base query for random_category_leads table
+            let baseQuery = 'SELECT * FROM random_category_leads WHERE 1=1';
+            const baseParams = [];
             let paramIndex = 1;
 
             // Add each filter condition
             if (filter.state) {
-                query += ` AND state = $${paramIndex++}`;
-                params.push(filter.state);
+                baseQuery += ` AND state = $${paramIndex++}`;
+                baseParams.push(filter.state);
             }
 
             if (filter.city) {
-                query += ` AND city = $${paramIndex++}`;
-                params.push(filter.city);
+                baseQuery += ` AND city = $${paramIndex++}`;
+                baseParams.push(filter.city);
             }
 
             if (filter.searchTerm) {
-                query += ` AND category = $${paramIndex++}`;
-                params.push(filter.searchTerm);
+                baseQuery += ` AND category = $${paramIndex++}`;
+                baseParams.push(filter.searchTerm);
             }
 
             // Email filter
             if (filter.hasEmail === true) {
-                query += ` AND email IS NOT NULL AND email != ''`;
+                baseQuery += ` AND email IS NOT NULL AND email != ''`;
             } else if (filter.hasEmail === false) {
-                query += ` AND (email IS NULL OR email = '')`;
+                baseQuery += ` AND (email IS NULL OR email = '')`;
             }
 
             // Website filter
             if (filter.hasWebsite === true) {
-                query += ` AND website IS NOT NULL AND website != ''`;
+                baseQuery += ` AND website IS NOT NULL AND website != ''`;
             } else if (filter.hasWebsite === false) {
-                query += ` AND (website IS NULL OR website = '')`;
+                baseQuery += ` AND (website IS NULL OR website = '')`;
             }
 
             // Phone filter - Now properly handling '[null]' value
             if (filter.hasPhone === true) {
-                query += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
+                baseQuery += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
             } else if (filter.hasPhone === false) {
-                query += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
+                baseQuery += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
             } else if (filter.excludeNullPhone === true) {
                 // Special filter to exclude '[null]' phone values but include valid phones or empty values
-                query += ` AND phone != '[null]'`;
+                baseQuery += ` AND phone != '[null]'`;
             }
 
             // Address filter
             if (filter.hasAddress === true) {
-                query += ` AND address IS NOT NULL AND address != ''`;
+                baseQuery += ` AND address IS NOT NULL AND address != ''`;
             } else if (filter.hasAddress === false) {
-                query += ` AND (address IS NULL OR address = '')`;
+                baseQuery += ` AND (address IS NULL OR address = '')`;
             }
 
             // Category filters for inclusion/exclusion
             if (filter.includeCategories && filter.includeCategories.length > 0) {
                 const placeholders = filter.includeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
-                query += ` AND category IN (${placeholders})`;
-                params.push(...filter.includeCategories);
+                baseQuery += ` AND category IN (${placeholders})`;
+                baseParams.push(...filter.includeCategories);
                 paramIndex += filter.includeCategories.length;
             }
 
             if (filter.excludeCategories && filter.excludeCategories.length > 0) {
                 const placeholders = filter.excludeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
-                query += ` AND category NOT IN (${placeholders})`;
-                params.push(...filter.excludeCategories);
+                baseQuery += ` AND category NOT IN (${placeholders})`;
+                baseParams.push(...filter.excludeCategories);
                 paramIndex += filter.excludeCategories.length;
             }
 
             // Rating filter
             if (filter.minRating) {
-                query += ` AND rating >= $${paramIndex++}`;
-                params.push(parseFloat(filter.minRating));
+                baseQuery += ` AND rating >= $${paramIndex++}`;
+                baseParams.push(parseFloat(filter.minRating));
             }
 
             // Keywords filter
             if (filter.keywords) {
                 const keywords = filter.keywords.split(',').map(k => k.trim()).filter(Boolean);
                 if (keywords.length > 0) {
-                    query += ' AND (';
+                    baseQuery += ' AND (';
                     const conditions = [];
                     for (const keyword of keywords) {
                         conditions.push(`(name ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`);
-                        params.push(`%${keyword}%`);
+                        baseParams.push(`%${keyword}%`);
                         paramIndex++;
                     }
-                    query += conditions.join(' OR ') + ')';
+                    baseQuery += conditions.join(' OR ') + ')';
                 }
             }
 
             // Add order by clause
-            query += ' ORDER BY name';
+            baseQuery += ' ORDER BY name';
 
-            // Execute query
-            logger.info(`Executing random_category_leads query: ${query.substring(0, 200)}...`);
-            logger.info(`With parameters: ${JSON.stringify(params)}`);
-            
-            const businesses = await db.getMany(query, params);
+            // First get the total count for progress tracking
+            const countQuery = baseQuery.replace('SELECT *', 'SELECT COUNT(*)');
+            const countResult = await db.getOne(countQuery, baseParams);
+            const totalCount = parseInt(countResult?.count || '0');
 
-            if (businesses.length === 0) {
+            if (totalCount === 0) {
                 logger.warn(`No random category leads found matching filter criteria`);
                 return {
                     filename: 'No_Results.xlsx',
@@ -1042,18 +1046,101 @@ class ExportService {
                 };
             }
 
-            // Create filename
-            const dateTime = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-            const filename = `Random_Category_Leads_${dateTime}.xlsx`;
-            const filepath = path.join(this.exportDirectory || '.', filename);
+            // Create workbook with streaming approach for large datasets
+            logger.info(`Starting Excel file creation with ${totalCount} records at ${filepath}`);
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Leads');
 
-            // Create Excel file with specified columns
-            await this.createExcelFile(businesses, filepath, columns);
+            // Define headers - either use selected columns or default set
+            const defaultColumns = [
+                'name', 'email', 'phone', 'website', 'address', 'city', 
+                'state', 'postal_code', 'category', 'rating'
+            ];
+
+            const headersToUse = columns && columns.length > 0 ? columns : defaultColumns;
+            
+            // Add headers with formatting
+            worksheet.columns = headersToUse.map(header => ({
+                header: this.formatColumnHeader(header),
+                key: header,
+                width: 20
+            }));
+
+            // Apply header styling
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFD3D3D3' }
+            };
+
+            // Process data in chunks to avoid memory issues
+            const CHUNK_SIZE = 500; // Reduced from 1000 to 500 for memory efficiency
+            const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
+            
+            logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
+            
+            let processedCount = 0;
+            let lastLoggedPercentage = -1;
+
+            // Process data in chunks using pagination
+            for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
+                // Query for this chunk with pagination
+                const paginatedQuery = `${baseQuery} LIMIT ${CHUNK_SIZE} OFFSET ${offset}`;
+                const chunkRecords = await db.getMany(paginatedQuery, baseParams);
+                
+                // Add rows to worksheet
+                for (const record of chunkRecords) {
+                    // Pick only the fields we want to include in the export
+                    const rowData = {};
+                    for (const column of headersToUse) {
+                        rowData[column] = record[column] || '';
+                        
+                        // Special handling for phone numbers
+                        if (column === 'phone' && record[column]) {
+                            // Format phone if it's not '[null]'
+                            if (record[column] !== '[null]') {
+                                rowData[column] = this.formatPhoneNumber(record[column]);
+                            } else {
+                                rowData[column] = ''; // Replace '[null]' with empty string
+                            }
+                        }
+                    }
+                    worksheet.addRow(rowData);
+                }
+                
+                // Force garbage collection between chunks to reduce memory pressure
+                if (global.gc) {
+                    global.gc();
+                }
+                
+                // Update progress
+                processedCount += chunkRecords.length;
+                const percentage = Math.floor((processedCount / totalCount) * 100);
+                
+                // Only log every 2% to reduce log spam
+                if (percentage > lastLoggedPercentage + 1) {
+                    logger.info(`Processed ${processedCount}/${totalCount} records (${percentage}%)`);
+                    lastLoggedPercentage = percentage;
+                }
+                
+                // Add a small delay to allow event loop to process other tasks
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            // Save workbook to file
+            await workbook.xlsx.writeFile(filepath);
+
+            // Get file size for logging
+            const stats = fs.statSync(filepath);
+            const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+            
+            logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}`);
 
             return {
                 filename,
                 filepath,
-                count: businesses.length
+                count: processedCount
             };
         } catch (error) {
             logger.error(`Error exporting random category leads: ${error.message}`);

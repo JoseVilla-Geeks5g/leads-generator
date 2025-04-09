@@ -79,11 +79,34 @@ export async function POST(request) {
             if (dataSource === 'random_category_leads') {
                 logger.info('Exporting from random_category_leads table');
                 
-                if (cleanFilter && Object.keys(cleanFilter).length > 0) {
-                    result = await exportService.exportRandomCategoryLeads(cleanFilter, columns);
-                } else {
-                    // No filters - export all random category leads
-                    result = await exportService.exportRandomCategoryLeads({}, columns);
+                try {
+                    // Force Node.js garbage collection if available
+                    if (global.gc) {
+                        logger.info('Running garbage collection before export');
+                        global.gc();
+                    }
+                    
+                    if (cleanFilter && Object.keys(cleanFilter).length > 0) {
+                        result = await exportService.exportRandomCategoryLeads(cleanFilter, columns);
+                    } else {
+                        // No filters - export all random category leads
+                        result = await exportService.exportRandomCategoryLeads({}, columns);
+                    }
+                    
+                    // Run garbage collection again after export
+                    if (global.gc) {
+                        logger.info('Running garbage collection after export');
+                        global.gc();
+                    }
+                } catch (memoryError) {
+                    if (memoryError.message && memoryError.message.includes('heap')) {
+                        logger.error(`Memory limit reached during export: ${memoryError.message}`);
+                        return NextResponse.json({
+                            error: 'Memory limit reached. The dataset is too large for a single export.',
+                            suggestion: 'Try exporting with more specific filters to reduce the result set size.'
+                        }, { status: 413 }); // 413 Payload Too Large
+                    }
+                    throw memoryError; // Re-throw if it's not a memory error
                 }
             }
             // Regular cases - handle with existing code paths
