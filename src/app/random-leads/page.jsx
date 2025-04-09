@@ -1,7 +1,9 @@
-import React from 'react';
-import { Metadata } from 'next';
-import RandomLeadsTable from '@/components/dashboard/RandomLeadsTable';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import RandomLeadsTable from '@/components/dashboard/RandomLeadsTable';
+import { Button } from '@/components/ui/button';
 
 export const metadata = {
   title: 'Random Category Leads | Leads Generator',
@@ -9,22 +11,65 @@ export const metadata = {
 };
 
 export default function RandomLeadsPage() {
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchRandomLeads() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/random-leads');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setLeads(data.leads || []);
+      } catch (err) {
+        console.error('Error fetching random leads:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchRandomLeads();
+  }, []);
+
+  const handleExport = async () => {
+    try {
+      window.location.href = '/export?dataSource=random_category_leads';
+    } catch (error) {
+      console.error('Error starting export:', error);
+    }
+  };
+
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800 flex items-center">
-            <span className="material-icons mr-3 text-primary">category</span>
-            Random Category Leads
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Leads generated using the random categories feature
-          </p>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Random Category Leads</h1>
+            <p className="text-gray-500">
+              View and manage leads from random category scraping
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleExport}>
+              Export Random Leads
+            </Button>
+          </div>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <RandomLeadsTable />
-        </div>
+
+        {error ? (
+          <div className="bg-error-light text-error p-4 rounded-md">
+            Error loading random leads: {error}
+          </div>
+        ) : (
+          <RandomLeadsTable leads={leads} loading={loading} />
+        )}
       </div>
     </DashboardLayout>
   );

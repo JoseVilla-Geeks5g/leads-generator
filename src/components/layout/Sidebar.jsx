@@ -42,7 +42,7 @@ export default function Sidebar() {
             items: [
                 { icon: 'people', label: 'Contacts', path: '/contacts' },
                 { icon: 'history', label: 'History', path: '/history' },
-                { icon: 'download', label: 'Exports', path: '/exports' }
+                { icon: 'download', label: 'Exports', path: '/export' }
             ]
         },
         {
