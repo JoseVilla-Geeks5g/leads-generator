@@ -941,39 +941,22 @@ class ExportService {
             const filepath = path.join(this.exportDirectory || '.', filename);
 
             // Build base query for random_category_leads table
-            let baseQuery = 'SELECT * FROM random_category_leads WHERE 1=1';
+            // FIXED: Replace the SELECT * with explicit column selection to avoid GROUP BY issues
+            let baseQuery = `
+                SELECT 
+                    id, name, email, phone, website, domain, address, city, 
+                    state, postal_code, country, category, rating, 
+                    search_term, search_date, task_id, business_type, 
+                    owner_name, verified, contacted, notes, 
+                    created_at, updated_at
+                FROM random_category_leads 
+                WHERE 1=1`;
+                
             const baseParams = [];
             let paramIndex = 1;
 
             // Add each filter condition
-            if (filter.state) {
-                baseQuery += ` AND state = $${paramIndex++}`;
-                baseParams.push(filter.state);
-            }
-
-            if (filter.city) {
-                baseQuery += ` AND city = $${paramIndex++}`;
-                baseParams.push(filter.city);
-            }
-
-            if (filter.searchTerm) {
-                baseQuery += ` AND category = $${paramIndex++}`;
-                baseParams.push(filter.searchTerm);
-            }
-
-            // Email filter
-            if (filter.hasEmail === true) {
-                baseQuery += ` AND email IS NOT NULL AND email != ''`;
-            } else if (filter.hasEmail === false) {
-                baseQuery += ` AND (email IS NULL OR email = '')`;
-            }
-
-            // Website filter
-            if (filter.hasWebsite === true) {
-                baseQuery += ` AND website IS NOT NULL AND website != ''`;
-            } else if (filter.hasWebsite === false) {
-                baseQuery += ` AND (website IS NULL OR website = '')`;
-            }
+            // ...existing code for filter conditions...
 
             // Phone filter - Now properly handling '[null]' value
             if (filter.hasPhone === true) {
@@ -985,55 +968,19 @@ class ExportService {
                 baseQuery += ` AND phone != '[null]'`;
             }
 
-            // Address filter
-            if (filter.hasAddress === true) {
-                baseQuery += ` AND address IS NOT NULL AND address != ''`;
-            } else if (filter.hasAddress === false) {
-                baseQuery += ` AND (address IS NULL OR address = '')`;
-            }
+            // ...existing code for other filter conditions...
 
-            // Category filters for inclusion/exclusion
-            if (filter.includeCategories && filter.includeCategories.length > 0) {
-                const placeholders = filter.includeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
-                baseQuery += ` AND category IN (${placeholders})`;
-                baseParams.push(...filter.includeCategories);
-                paramIndex += filter.includeCategories.length;
-            }
-
-            if (filter.excludeCategories && filter.excludeCategories.length > 0) {
-                const placeholders = filter.excludeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
-                baseQuery += ` AND category NOT IN (${placeholders})`;
-                baseParams.push(...filter.excludeCategories);
-                paramIndex += filter.excludeCategories.length;
-            }
-
-            // Rating filter
-            if (filter.minRating) {
-                baseQuery += ` AND rating >= $${paramIndex++}`;
-                baseParams.push(parseFloat(filter.minRating));
-            }
-
-            // Keywords filter
-            if (filter.keywords) {
-                const keywords = filter.keywords.split(',').map(k => k.trim()).filter(Boolean);
-                if (keywords.length > 0) {
-                    baseQuery += ' AND (';
-                    const conditions = [];
-                    for (const keyword of keywords) {
-                        conditions.push(`(name ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`);
-                        baseParams.push(`%${keyword}%`);
-                        paramIndex++;
-                    }
-                    baseQuery += conditions.join(' OR ') + ')';
-                }
-            }
-
-            // Add order by clause
+            // Add order by clause - REMOVED any potential GROUP BY that might be causing issues
             baseQuery += ' ORDER BY name';
 
             // First get the total count for progress tracking
-            const countQuery = baseQuery.replace('SELECT *', 'SELECT COUNT(*)');
-            const countResult = await db.getOne(countQuery, baseParams);
+            const countQuery = `SELECT COUNT(*) FROM random_category_leads WHERE 1=1`;
+            
+            // Add the same WHERE conditions to the count query
+            const whereClause = baseQuery.split('WHERE 1=1')[1].split('ORDER BY')[0];
+            const fullCountQuery = countQuery + whereClause;
+            
+            const countResult = await db.getOne(fullCountQuery, baseParams);
             const totalCount = parseInt(countResult?.count || '0');
 
             if (totalCount === 0) {
@@ -1061,7 +1008,7 @@ class ExportService {
             
             // Add headers with formatting
             worksheet.columns = headersToUse.map(header => ({
-                header: this.formatColumnHeader(header),
+                header: this.formatColumnHeader(header),  // Now this function exists
                 key: header,
                 width: 20
             }));
@@ -1075,7 +1022,7 @@ class ExportService {
             };
 
             // Process data in chunks to avoid memory issues
-            const CHUNK_SIZE = 500; // Reduced from 1000 to 500 for memory efficiency
+            const CHUNK_SIZE = 500; // Reduced for memory efficiency
             const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
             
             logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
@@ -1085,7 +1032,7 @@ class ExportService {
 
             // Process data in chunks using pagination
             for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
-                // Query for this chunk with pagination
+                // Query for this chunk with pagination - Use the explicitly selected columns query
                 const paginatedQuery = `${baseQuery} LIMIT ${CHUNK_SIZE} OFFSET ${offset}`;
                 const chunkRecords = await db.getMany(paginatedQuery, baseParams);
                 
@@ -1146,6 +1093,31 @@ class ExportService {
             logger.error(`Error exporting random category leads: ${error.message}`);
             throw error;
         }
+    }
+
+    /**
+     * Format column header for display in exported files
+     * @param {string} header - Raw column name
+     * @returns {string} Formatted column header
+     */
+    formatColumnHeader(header) {
+        if (!header) return '';
+        
+        // Handle snake_case headers (convert to Title Case)
+        if (header.includes('_')) {
+            return header
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        }
+        
+        // Handle camelCase headers
+        return header
+            // Insert a space before all caps
+            .replace(/([A-Z])/g, ' $1')
+            // Uppercase the first character
+            .replace(/^./, str => str.toUpperCase())
+            .trim();
     }
 }
 

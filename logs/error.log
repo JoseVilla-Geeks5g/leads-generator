@@ -15632,3 +15632,11 @@ Call log:
 
 [2025-04-09T20:53:20.549Z] [ERROR] Database query error: timeout exceeded when trying to connect
 [2025-04-09T20:53:20.549Z] [ERROR] Error fetching categories: timeout exceeded when trying to connect
+[2025-04-09T22:53:26.031Z] [ERROR] Database query error: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
+[2025-04-09T22:53:26.031Z] [ERROR] Error exporting random category leads: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
+[2025-04-09T22:53:26.031Z] [ERROR] Error exporting data: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
+[2025-04-09T22:53:41.716Z] [ERROR] Database query error: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
+[2025-04-09T22:53:41.716Z] [ERROR] Error exporting random category leads: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
+[2025-04-09T22:53:41.716Z] [ERROR] Error exporting data: column "random_category_leads.name" must appear in the GROUP BY clause or be used in an aggregate function
+[2025-04-09T22:57:59.349Z] [ERROR] Error exporting random category leads: this.formatColumnHeader is not a function
+[2025-04-09T22:57:59.349Z] [ERROR] Error exporting data: this.formatColumnHeader is not a function
