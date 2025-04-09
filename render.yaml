@@ -26,6 +26,6 @@ services:
       - key: PGPASSWORD
         sync: false
     disk:
-      name: data
+      name: exports
       mountPath: /app/exports
       sizeGB: 1
