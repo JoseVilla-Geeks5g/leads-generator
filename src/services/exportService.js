@@ -1089,8 +1089,9 @@ class ExportService {
                     const endRecord = Math.min(startRecord + MAX_RECORDS_PER_FILE, totalCount);
                     logger.info(`Creating file ${fileIndex + 1}/${numFiles} with records ${startRecord + 1}-${endRecord}`);
                     
-                    // Create a paginated query for this file
-                    const paginatedQuery = baseQuery + ` LIMIT ${MAX_RECORDS_PER_FILE} OFFSET ${startRecord}`;
+                    // CRITICAL FIX: Always add ORDER BY clause before LIMIT and OFFSET
+                    // Create a paginated query for this file with proper ORDER BY clause
+                    const paginatedQuery = `${baseQuery} ORDER BY name LIMIT ${MAX_RECORDS_PER_FILE} OFFSET ${startRecord}`;
                     
                     // Generate unique filename for this part
                     const partFilename = `Random_Category_Leads_${dateTime}_part${fileIndex + 1}of${numFiles}.xlsx`;
@@ -1119,7 +1120,8 @@ class ExportService {
                 };
             }
 
-            // Create workbook with streaming approach for large datasets
+            // For single file export, ensure ORDER BY is added to the base query
+            baseQuery += ` ORDER BY name`;
             logger.info(`Starting Excel file creation with ${totalCount} records at ${filepath}`);
             
             // Call the refactored method for Excel export
