@@ -1068,11 +1068,241 @@ class ExportService {
                 };
             }
 
+            // Check if CSV should be used for very large datasets
+            const USE_CSV_THRESHOLD = 100000;
+            let shouldUseCsv = totalCount > USE_CSV_THRESHOLD;
+            
+            if (shouldUseCsv) {
+                logger.info(`Dataset size (${totalCount}) exceeds Excel threshold (${USE_CSV_THRESHOLD}), using CSV format`);
+                return await this.exportRandomCategoryLeadsAsCsv(baseQuery, baseParams, totalCount, columns, dateTime);
+            }
+
+            // Split large exports into multiple files if needed
+            const MAX_RECORDS_PER_FILE = 50000;
+            if (totalCount > MAX_RECORDS_PER_FILE) {
+                const numFiles = Math.ceil(totalCount / MAX_RECORDS_PER_FILE);
+                logger.info(`Large dataset detected (${totalCount} records). Splitting into ${numFiles} files.`);
+                
+                const results = [];
+                for (let fileIndex = 0; fileIndex < numFiles; fileIndex++) {
+                    const startRecord = fileIndex * MAX_RECORDS_PER_FILE;
+                    const endRecord = Math.min(startRecord + MAX_RECORDS_PER_FILE, totalCount);
+                    logger.info(`Creating file ${fileIndex + 1}/${numFiles} with records ${startRecord + 1}-${endRecord}`);
+                    
+                    // Create a paginated query for this file
+                    const paginatedQuery = baseQuery + ` LIMIT ${MAX_RECORDS_PER_FILE} OFFSET ${startRecord}`;
+                    
+                    // Generate unique filename for this part
+                    const partFilename = `Random_Category_Leads_${dateTime}_part${fileIndex + 1}of${numFiles}.xlsx`;
+                    const partFilepath = path.join(this.exportDirectory || '.', partFilename);
+                    
+                    // Export this chunk as a separate file
+                    const partResult = await this.exportRandomCategoryLeadsToExcelFile(
+                        paginatedQuery, 
+                        baseParams, 
+                        endRecord - startRecord, 
+                        columns, 
+                        partFilepath,
+                        partFilename
+                    );
+                    
+                    results.push(partResult);
+                }
+                
+                // Return information about all files
+                return {
+                    filename: results.map(r => r.filename),
+                    filepath: results.map(r => r.filepath),
+                    count: totalCount,
+                    isMultiFile: true,
+                    files: results
+                };
+            }
+
             // Create workbook with streaming approach for large datasets
             logger.info(`Starting Excel file creation with ${totalCount} records at ${filepath}`);
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Leads');
+            
+            // Call the refactored method for Excel export
+            return await this.exportRandomCategoryLeadsToExcelFile(
+                baseQuery, 
+                baseParams, 
+                totalCount, 
+                columns, 
+                filepath,
+                filename
+            );
+        } catch (error) {
+            logger.error(`Error exporting random category leads: ${error.message}`);
+            throw error;
+        }
+    }
 
+    /**
+     * Optimized function to export data to Excel file with minimal memory usage
+     * @param {string} query - The SQL query to execute
+     * @param {Array} params - Query parameters
+     * @param {number} totalCount - Total number of records
+     * @param {Array} columns - Columns to include
+     * @param {string} filepath - Path to save file
+     * @param {string} filename - File name
+     * @returns {Object} Export result
+     */
+    async exportRandomCategoryLeadsToExcelFile(query, params, totalCount, columns, filepath, filename) {
+        // Define headers - either use selected columns or default set
+        const defaultColumns = [
+            'name', 'email', 'phone', 'website', 'address', 'city', 
+            'state', 'postal_code', 'category', 'rating'
+        ];
+
+        const headersToUse = columns && columns.length > 0 ? columns : defaultColumns;
+        
+        // Create workbook with optimized options
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Leads Generator';
+        workbook.created = new Date();
+        
+        // Use options to reduce memory usage
+        workbook.properties.date1904 = false;
+        
+        const worksheet = workbook.addWorksheet('Leads', {
+            // These options help reduce memory usage
+            properties: {
+                defaultColWidth: 15,
+                filterMode: false,
+                showGridLines: true
+            }
+        });
+        
+        // Add headers with formatting
+        worksheet.columns = headersToUse.map(header => ({
+            header: this.formatColumnHeader(header),
+            key: header,
+            width: 18
+        }));
+
+        // Apply header styling
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD3D3D3' }
+        };
+
+        // Process data in MUCH smaller chunks to avoid memory issues
+        // CRITICAL FIX: Use drastically smaller chunk size
+        const CHUNK_SIZE = 2500; // Reduced chunk size for memory efficiency
+        const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
+        
+        logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
+        
+        let processedCount = 0;
+        let lastLoggedPercentage = -1;
+
+        // Pre-allocate memory for the worksheet rows
+        worksheet.startRow = 1; // Set the starting row for writing data
+
+        // Process data in chunks using pagination
+        for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
+            // Force garbage collection before each chunk if available
+            if (global.gc) {
+                global.gc();
+            }
+            
+            // Query for this chunk with pagination
+            const paginatedQuery = `${query} LIMIT ${CHUNK_SIZE} OFFSET ${offset}`;
+            const chunkRecords = await db.getMany(paginatedQuery, params);
+            
+            if (chunkRecords.length === 0) {
+                break; // No more records
+            }
+            
+            // Use reduced object copies to save memory
+            const rowsToAdd = [];
+            
+            // Add rows to worksheet - only include necessary columns
+            for (const record of chunkRecords) {
+                // Create a minimal row object with only required properties
+                const rowData = {};
+                
+                for (const column of headersToUse) {
+                    if (column === 'phone' && record[column] === '[null]') {
+                        rowData[column] = ''; // Replace '[null]' with empty string
+                    } else {
+                        rowData[column] = record[column] || '';
+                    }
+                }
+                rowsToAdd.push(rowData);
+            }
+            
+            // Add all rows at once (more efficient)
+            if (rowsToAdd.length > 0) {
+                worksheet.addRows(rowsToAdd);
+            }
+            
+            // Clear references to help GC
+            rowsToAdd.length = 0;
+            
+            // Update progress
+            processedCount += chunkRecords.length;
+            const percentage = Math.floor((processedCount / totalCount) * 100);
+            
+            // Only log every 10% to reduce log spam
+            if (percentage >= lastLoggedPercentage + 10) {
+                logger.info(`Processed ${processedCount}/${totalCount} records (${percentage}%)`);
+                lastLoggedPercentage = percentage;
+            }
+            
+            // Add a small delay to free up the event loop
+            await new Promise(resolve => setTimeout(resolve, 5));
+        }
+
+        try {
+            // Use manual optimization to reduce memory during save
+            const options = { 
+                useStyles: true,
+                useSharedStrings: false, // Disable shared strings to reduce memory
+            };
+            
+            // Save workbook to file with optimized options
+            await workbook.xlsx.writeFile(filepath, options);
+        } catch (error) {
+            logger.error(`Error saving Excel file: ${error.message}`);
+            throw error;
+        }
+
+        // Get file size for logging
+        const stats = fs.statSync(filepath);
+        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        
+        logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}`);
+        
+        // Force a garbage collection after saving
+        if (global.gc) {
+            global.gc();
+        }
+
+        return {
+            filename,
+            filepath,
+            count: processedCount
+        };
+    }
+
+    /**
+     * Export data as CSV file (much more memory efficient for very large datasets)
+     * @param {string} query - The SQL query to execute
+     * @param {Array} params - Query parameters
+     * @param {number} totalCount - Total number of records
+     * @param {Array} columns - Columns to include
+     * @param {string} dateTime - DateTime string for filename
+     * @returns {Object} Export result
+     */
+    async exportRandomCategoryLeadsAsCsv(query, params, totalCount, columns, dateTime) {
+        try {
+            // Create filename and filepath
+            const filename = `Random_Category_Leads_${dateTime}.csv`;
+            const filepath = path.join(this.exportDirectory || '.', filename);
+            
             // Define headers - either use selected columns or default set
             const defaultColumns = [
                 'name', 'email', 'phone', 'website', 'address', 'city', 
@@ -1081,88 +1311,99 @@ class ExportService {
 
             const headersToUse = columns && columns.length > 0 ? columns : defaultColumns;
             
-            // Add headers with formatting
-            worksheet.columns = headersToUse.map(header => ({
-                header: this.formatColumnHeader(header),
-                key: header,
-                width: 20
-            }));
-
-            // Apply header styling
-            worksheet.getRow(1).font = { bold: true };
-            worksheet.getRow(1).fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFD3D3D3' }
-            };
-
-            // Process data in chunks to avoid memory issues
-            const CHUNK_SIZE = 5000; // Process in larger chunks for better performance
+            // Create a write stream for the CSV file
+            const writeStream = fs.createWriteStream(filepath);
+            
+            // Use the fast-csv library for streaming CSV generation
+            const csvStream = require('fast-csv').format({ headers: true });
+            csvStream.pipe(writeStream);
+            
+            // Write column headers first
+            const headerRow = {};
+            headersToUse.forEach(col => {
+                headerRow[col] = this.formatColumnHeader(col);
+            });
+            csvStream.write(headerRow);
+            
+            // Process data in even smaller chunks for CSV
+            const CHUNK_SIZE = 1000;
             const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
             
-            logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
+            logger.info(`Processing ${totalCount} records in ${totalChunks} CSV chunks`);
             
             let processedCount = 0;
             let lastLoggedPercentage = -1;
-
-            // Process data in chunks using pagination
+            
+            // Process each chunk
             for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
-                // Query for this chunk with pagination - Use the explicitly selected columns query
-                const paginatedQuery = `${baseQuery} LIMIT ${CHUNK_SIZE} OFFSET ${offset}`;
-                const chunkRecords = await db.getMany(paginatedQuery, baseParams);
-
-                // Add rows to worksheet
-                for (const record of chunkRecords) {
-                    // Pick only the fields we want to include in the export
-                    const rowData = {};
-                    for (const column of headersToUse) {
-                        rowData[column] = record[column] || '';
-                        
-                        // Special handling for phone numbers, removed the formatting since it's already formatted
-                        if (column === 'phone' && record[column]) {
-                            // Format phone if it's not '[null]'
-                            if (record[column] !== '[null]') {
-                                rowData[column] = record[column]; // Already formatted
-                            } else {
-                                rowData[column] = ''; // Replace '[null]' with empty string
-                            }
-                        }
-                    }
-                    worksheet.addRow(rowData);
+                // Query for this chunk with pagination
+                const paginatedQuery = `${query} LIMIT ${CHUNK_SIZE} OFFSET ${offset}`;
+                const chunkRecords = await db.getMany(paginatedQuery, params);
+                
+                if (chunkRecords.length === 0) {
+                    break; // No more records
                 }
                 
-                // Force garbage collection between chunks to reduce memory pressure
-                if (global.gc) {
-                    global.gc();
+                // Process each record
+                for (const record of chunkRecords) {
+                    // Create a CSV row with only selected columns
+                    const rowData = {};
+                    for (const column of headersToUse) {
+                        if (column === 'phone' && record[column] === '[null]') {
+                            rowData[column] = ''; // Replace '[null]' with empty string  
+                        } else {
+                            rowData[column] = record[column] || '';
+                        }
+                    }
+                    
+                    // Write row to CSV stream
+                    csvStream.write(rowData);
                 }
                 
                 // Update progress
                 processedCount += chunkRecords.length;
                 const percentage = Math.floor((processedCount / totalCount) * 100);
                 
-                // Only log every few % to reduce log spam
-                if (percentage > lastLoggedPercentage + 7) {
-                    logger.info(`Processed ${processedCount}/${totalCount} records (${percentage}%)`);
+                // Log progress every 10%
+                if (percentage >= lastLoggedPercentage + 10) {
+                    logger.info(`Processed ${processedCount}/${totalCount} CSV records (${percentage}%)`);
                     lastLoggedPercentage = percentage;
                 }
+                
+                // Force GC after each chunk
+                if (global.gc) {
+                    global.gc();
+                }
+                
+                // Small delay to free up event loop
+                await new Promise(resolve => setTimeout(resolve, 5));
             }
-
-            // Save workbook to file
-            await workbook.xlsx.writeFile(filepath);
-
-            // Get file size for logging
-            const stats = fs.statSync(filepath);
-            const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
             
-            logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}`);
-
-            return {
-                filename,
-                filepath,
-                count: processedCount
-            };
+            // Close streams and complete the CSV write
+            return new Promise((resolve, reject) => {
+                csvStream.end();
+                writeStream.on('finish', () => {
+                    // Get file size for logging
+                    const stats = fs.statSync(filepath);
+                    const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+                    
+                    logger.info(`CSV file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}`);
+                    
+                    resolve({
+                        filename,
+                        filepath,
+                        count: processedCount,
+                        format: 'csv'
+                    });
+                });
+                
+                writeStream.on('error', (err) => {
+                    logger.error(`Error writing CSV file: ${err.message}`);
+                    reject(err);
+                });
+            });
         } catch (error) {
-            logger.error(`Error exporting random category leads: ${error.message}`);
+            logger.error(`Error exporting as CSV: ${error.message}`);
             throw error;
         }
     }
