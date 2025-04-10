@@ -1097,7 +1097,7 @@ class ExportService {
             };
 
             // Process data in chunks to avoid memory issues
-            const CHUNK_SIZE = 10000; // Process in larger chunks for better performance
+            const CHUNK_SIZE = 5000; // Process in larger chunks for better performance
             const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
             
             logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
