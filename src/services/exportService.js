@@ -3,6 +3,28 @@ import fs from 'fs';
 import ExcelJS from 'exceljs';
 import db from './database';
 import logger from './logger';
+import { Worker } from 'worker_threads';
+import os from 'os';
+
+//! Performance configuration - tuned for 0.5 CPU environment
+const PERFORMANCE_CONFIG = {
+    CHUNK_SIZE: 2000,                 // Number of records to process per chunk
+    MAX_PARALLEL_CHUNKS: 2,           // Maximum parallel chunks for 0.5 CPU
+    BUFFER_SIZE: 5000,                // Maximum records to keep in memory at once
+    WORKER_THREADS: Math.max(1, Math.min(2, Math.floor(os.cpus().length / 2))),  // Use up to 2 worker threads
+    EXCEL_OPTIMIZATION: {
+        useStyles: true,
+        useSharedStrings: false,      // Disable for memory efficiency
+        compression: true             // Enable compression for smaller file size
+    },
+    PROGRESS_INTERVAL: 5              // How often to log progress (percentage)
+};
+
+//? Override some parameters for Render.com environment
+if (process.env.RENDER) {
+    PERFORMANCE_CONFIG.MAX_PARALLEL_CHUNKS = 2;  // Limited concurrency on Render
+    PERFORMANCE_CONFIG.WORKER_THREADS = 1;       // Limited to one worker on free tier
+}
 
 class ExportService {
     constructor() {
@@ -20,6 +42,635 @@ class ExportService {
                 console.error('Failed to create export directory:', err);
             }
         }
+        
+        this.activeExports = new Map();
+        this.formatters = this.initializeFormatters();
+
+        //? Track export metrics for performance tuning
+        this.metrics = {
+            lastExportDuration: 0,
+            lastExportRecordCount: 0,
+            averageRecordsPerSecond: 0,
+            completedExports: 0
+        };
+    }
+
+    //? Initialize data formatters for export
+    initializeFormatters() {
+        return {
+            phoneNumber: (phone) => {
+                if (!phone) return '';
+                if (phone === '[null]') return '';
+                
+                //? Remove all non-numeric characters
+                const digitsOnly = phone.replace(/\D/g, '');
+                
+                //? Format based on length
+                if (digitsOnly.length === 10) {
+                    return `(${digitsOnly.substring(0, 3)}) ${digitsOnly.substring(3, 6)}-${digitsOnly.substring(6)}`;
+                } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+                    return `(${digitsOnly.substring(1, 4)}) ${digitsOnly.substring(4, 7)}-${digitsOnly.substring(7)}`;
+                }
+                
+                //? If we can't format it properly, return the original
+                return phone;
+            },
+            
+            columnHeader: (header) => {
+                if (!header) return '';
+                
+                //? Handle snake_case headers (convert to Title Case)
+                if (header.includes('_')) {
+                    return header
+                        .split('_')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                }
+                
+                //? Handle camelCase headers
+                return header
+                    //? Insert a space before all caps
+                    .replace(/([A-Z])/g, ' $1')
+                    //? Uppercase the first character
+                    .replace(/^./, str => str.toUpperCase())
+                    .trim();
+            }
+        };
+    }
+
+    /**
+     * * Format a phone number for display
+     * @param {string} phone - Raw phone number
+     * @returns {string} Formatted phone number
+     */
+    formatPhoneNumber(phone) {
+        return this.formatters.phoneNumber(phone);
+    }
+    
+    /**
+     * * Format column header for display in exported files
+     * @param {string} header - Raw column name
+     * @returns {string} Formatted column header
+     */
+    formatColumnHeader(header) {
+        return this.formatters.columnHeader(header);
+    }
+
+    /**
+     * * Get the count of total businesses
+     * @returns {Promise<number>} Total count
+     */
+    async getTotalCount() {
+        try {
+            const result = await db.getOne('SELECT COUNT(*) as count FROM business_listings');
+            return parseInt(result?.count || '0');
+        } catch (error) {
+            logger.error(`Error getting total count: ${error.message}`);
+            return 0;
+        }
+    }
+
+    //? Get count of business listings that have an email
+    async countBusinessesWithEmail() {
+        try {
+            const result = await db.getOne('SELECT COUNT(*) as count FROM business_listings WHERE email IS NOT NULL AND email != \'\'');
+            return parseInt(result?.count || '0');
+        } catch (error) {
+            logger.error(`Error counting businesses with email: ${error.message}`);
+            return 0;
+        }
+    }
+
+    //? Get count of businesses matching a filter
+    async getFilteredCount(filter) {
+        try {
+            let query = 'SELECT COUNT(*) FROM business_listings WHERE 1=1';
+            const params = [];
+            let paramIndex = 1;
+
+            //? Apply filters
+            if (filter.state) {
+                query += ` AND state = $${paramIndex++}`;
+                params.push(filter.state);
+            }
+            
+            if (filter.city) {
+                query += ` AND city ILIKE $${paramIndex++}`;
+                params.push(`%${filter.city}%`);
+            }
+            
+            //? ... other filter conditions
+
+            logger.info(`Executing filtered count query: ${query} with ${params.length} parameters`);
+            const result = await db.getOne(query, params);
+            return parseInt(result?.count || '0');
+        } catch (error) {
+            logger.error(`Error getting filtered count: ${error.message}`);
+            return 0;
+        }
+    }
+
+    //? Get count of businesses in a given state
+    async getCountByState(state) {
+        try {
+            const result = await db.getOne('SELECT COUNT(*) as count FROM business_listings WHERE state = $1', [state]);
+            return parseInt(result?.count || '0');
+        } catch (error) {
+            logger.error(`Error getting count by state: ${error.message}`);
+            return 0;
+        }
+    }
+
+    //? Get task by ID
+    async getTaskById(taskId) {
+        try {
+            return await db.getOne('SELECT * FROM scraping_tasks WHERE id = $1', [taskId]);
+        } catch (error) {
+            logger.error(`Error getting task by ID: ${error.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * * Export filtered businesses from random_category_leads table with optimized performance
+     * @param {Object} filter - Filter criteria
+     * @param {Array} columns - Selected columns
+     * @returns {Object} Export result
+     */
+    async exportRandomCategoryLeads(filter = {}, columns = null) {
+        const exportId = `random-${Date.now()}`;
+        this.activeExports.set(exportId, { progress: 0, status: 'starting' });
+        const startTime = Date.now();
+        
+        try {
+            //? Create filename and filepath first
+            const dateTime = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+            const filename = `Random_Category_Leads_${dateTime}.xlsx`;
+            const filepath = path.join(this.exportDirectory || '.', filename);
+
+            //! Build optimized query with indexes
+            let baseQuery = `
+                SELECT 
+                    id, name, email, phone, website, domain, address, city, 
+                    state, postal_code, country, category, rating, 
+                    search_term, search_date, task_id, business_type, 
+                    owner_name, verified, contacted, notes, 
+                    created_at, updated_at
+                FROM random_category_leads 
+                WHERE 1=1`;
+                
+            const baseParams = [];
+            let paramIndex = 1;
+
+            //? Add filter conditions with parameter binding
+            if (filter.state) {
+                baseQuery += ` AND state = $${paramIndex++}`;
+                baseParams.push(filter.state);
+            }
+
+            if (filter.city) {
+                baseQuery += ` AND city ILIKE $${paramIndex++}`;
+                baseParams.push(`%${filter.city}%`);
+                logger.info(`Adding city filter for "${filter.city}"`);
+            }
+            
+            if (filter.searchTerm) {
+                baseQuery += ` AND category = $${paramIndex++}`;
+                baseParams.push(filter.searchTerm);
+            }
+
+            //? Email filter
+            if (filter.hasEmail === true) {
+                baseQuery += ` AND email IS NOT NULL AND email != ''`;
+            } else if (filter.hasEmail === false) {
+                baseQuery += ` AND (email IS NULL OR email = '')`;
+            }
+
+            //? Website filter - Fixed
+            if (filter.hasWebsite === true) {
+                baseQuery += ` AND website IS NOT NULL AND website != ''`;
+            } else if (filter.hasWebsite === false) {
+                baseQuery += ` AND (website IS NULL OR website = '')`;
+            }
+
+            //? Phone filter
+            if (filter.hasPhone === true) {
+                baseQuery += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
+            } else if (filter.hasPhone === false) {
+                baseQuery += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
+            } else if (filter.excludeNullPhone === true) {
+                baseQuery += ` AND phone != '[null]'`;
+            }
+
+            //? Address filter - Fixed
+            if (filter.hasAddress === true) {
+                baseQuery += ` AND address IS NOT NULL AND address != ''`;
+            } else if (filter.hasAddress === false) {
+                baseQuery += ` AND (address IS NULL OR address = '')`;
+            }
+
+            //? Category filters
+            if (filter.includeCategories && filter.includeCategories.length > 0) {
+                const placeholders = filter.includeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
+                baseQuery += ` AND category IN (${placeholders})`;
+                baseParams.push(...filter.includeCategories);
+                paramIndex += filter.includeCategories.length;
+            }
+
+            if (filter.excludeCategories && filter.excludeCategories.length > 0) {
+                const placeholders = filter.excludeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
+                baseQuery += ` AND category NOT IN (${placeholders})`;
+                baseParams.push(...filter.excludeCategories);
+                paramIndex += filter.excludeCategories.length;
+            }
+
+            //? Rating filter
+            if (filter.minRating) {
+                baseQuery += ` AND rating >= $${paramIndex++}`;
+                baseParams.push(parseFloat(filter.minRating));
+            }
+
+            //? Keywords filter
+            if (filter.keywords) {
+                const keywords = filter.keywords.split(',').map(k => k.trim()).filter(Boolean);
+                if (keywords.length > 0) {
+                    baseQuery += ' AND (';
+                    const conditions = [];
+                    for (const keyword of keywords) {
+                        conditions.push(`(name ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`);
+                        baseParams.push(`%${keyword}%`);
+                        paramIndex++;
+                    }
+                    baseQuery += conditions.join(' OR ') + ')';
+                }
+            }
+
+            //! CRITICAL: Always add ORDER BY clause before LIMIT/OFFSET
+            baseQuery += ' ORDER BY name';
+
+            //? Log the query for debugging
+            logger.info(`Export query: ${baseQuery.replace(/\s+/g, ' ')}`);
+            logger.info(`Export parameters: ${baseParams.join(', ')}`);
+
+            //? Get total count using the same WHERE conditions
+            const countQueryBase = `SELECT COUNT(*) FROM random_category_leads WHERE 1=1`;
+            const whereClause = baseQuery.split('WHERE 1=1')[1].split('ORDER BY')[0];
+            const countQuery = countQueryBase + whereClause;
+
+            const countResult = await db.getOne(countQuery, baseParams);
+            const totalCount = parseInt(countResult?.count || '0');
+            
+            logger.info(`Count query returned ${totalCount} records`);
+            this.activeExports.set(exportId, { progress: 1, status: 'counting', totalCount });
+
+            if (totalCount === 0) {
+                logger.warn(`No random category leads found matching filter criteria`);
+                return {
+                    filename: 'No_Results.xlsx',
+                    filepath: '',
+                    count: 0,
+                    isEmpty: true
+                };
+            }
+
+            //? Check if CSV format would be better for very large datasets
+            const USE_CSV_THRESHOLD = 200000;
+            let shouldUseCsv = totalCount > USE_CSV_THRESHOLD;
+            
+            if (shouldUseCsv) {
+                logger.info(`Dataset size (${totalCount}) exceeds Excel threshold (${USE_CSV_THRESHOLD}), using CSV format`);
+                this.activeExports.set(exportId, { progress: 2, status: 'preparing-csv', totalCount });
+                return await this.exportRandomCategoryLeadsAsCsv(baseQuery, baseParams, totalCount, columns, dateTime, exportId);
+            }
+
+            //? Split large exports into multiple files if needed
+            const MAX_RECORDS_PER_FILE = 80000; // Increased since we have more CPU now
+            if (totalCount > MAX_RECORDS_PER_FILE) {
+                const numFiles = Math.ceil(totalCount / MAX_RECORDS_PER_FILE);
+                logger.info(`Large dataset detected (${totalCount} records). Splitting into ${numFiles} files.`);
+                this.activeExports.set(exportId, { progress: 2, status: 'splitting-files', totalCount, numFiles });
+                
+                const results = [];
+                for (let fileIndex = 0; fileIndex < numFiles; fileIndex++) {
+                    const startRecord = fileIndex * MAX_RECORDS_PER_FILE;
+                    const endRecord = Math.min(startRecord + MAX_RECORDS_PER_FILE, totalCount);
+                    logger.info(`Creating file ${fileIndex + 1}/${numFiles} with records ${startRecord + 1}-${endRecord}`);
+                    
+                    //? Create a paginated query for this file with proper ORDER BY clause
+                    const paginatedQuery = `${baseQuery} LIMIT ${MAX_RECORDS_PER_FILE} OFFSET ${startRecord}`;
+                    
+                    //? Generate unique filename for this part
+                    const partFilename = `Random_Category_Leads_${dateTime}_part${fileIndex + 1}of${numFiles}.xlsx`;
+                    const partFilepath = path.join(this.exportDirectory || '.', partFilename);
+                    
+                    //? Update export progress tracking
+                    const partProgress = { fileIndex, numFiles, currentFile: fileIndex + 1, startRecord, endRecord };
+                    this.activeExports.set(exportId, { 
+                        progress: 5 + ((fileIndex / numFiles) * 95), 
+                        status: 'exporting-part', 
+                        totalCount, 
+                        ...partProgress 
+                    });
+                    
+                    //? Export this chunk as a separate file
+                    const partResult = await this.exportRandomCategoryLeadsToExcelFile(
+                        paginatedQuery, 
+                        baseParams, 
+                        endRecord - startRecord, 
+                        columns, 
+                        partFilepath,
+                        partFilename,
+                        exportId,
+                        partProgress
+                    );
+                    
+                    results.push(partResult);
+                }
+                
+                //? Update metrics
+                this.metrics.lastExportDuration = Date.now() - startTime;
+                this.metrics.lastExportRecordCount = totalCount;
+                this.metrics.completedExports++;
+                this.metrics.averageRecordsPerSecond = Math.round(totalCount / (this.metrics.lastExportDuration / 1000));
+                
+                //? Remove from active exports
+                this.activeExports.delete(exportId);
+                
+                //? Return information about all files
+                return {
+                    filename: results.map(r => r.filename),
+                    filepath: results.map(r => r.filepath),
+                    count: totalCount,
+                    isMultiFile: true,
+                    files: results
+                };
+            }
+
+            //? For single file export, add ORDER BY clause and process
+            logger.info(`Starting Excel file creation with ${totalCount} records at ${filepath}`);
+            this.activeExports.set(exportId, { progress: 5, status: 'preparing-excel', totalCount });
+            
+            //? Call the optimized Excel export method
+            const result = await this.exportRandomCategoryLeadsToExcelFile(
+                baseQuery, 
+                baseParams, 
+                totalCount, 
+                columns, 
+                filepath,
+                filename,
+                exportId
+            );
+            
+            //? Update metrics
+            this.metrics.lastExportDuration = Date.now() - startTime;
+            this.metrics.lastExportRecordCount = totalCount;
+            this.metrics.completedExports++;
+            this.metrics.averageRecordsPerSecond = Math.round(totalCount / (this.metrics.lastExportDuration / 1000));
+            
+            //? Remove from active exports
+            this.activeExports.delete(exportId);
+            
+            return result;
+            
+        } catch (error) {
+            logger.error(`Error exporting random category leads: ${error.message}`);
+            this.activeExports.set(exportId, { progress: 100, status: 'error', error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * * Highly optimized function to export data to Excel file with minimal memory usage
+     */
+    async exportRandomCategoryLeadsToExcelFile(query, params, totalCount, columns, filepath, filename, exportId, partProgress = null) {
+        //? Set up headers to use
+        const defaultColumns = [
+            'name', 'email', 'phone', 'website', 'address', 'city', 
+            'state', 'postal_code', 'category', 'rating'
+        ];
+
+        const headersToUse = columns && columns.length > 0 ? columns : defaultColumns;
+        
+        //? Create workbook with optimized options for memory efficiency
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Leads Generator';
+        workbook.created = new Date();
+        
+        //? Use options to reduce memory usage
+        workbook.properties.date1904 = false;
+        
+        const worksheet = workbook.addWorksheet('Leads', {
+            properties: {
+                defaultColWidth: 15,
+                filterMode: false,
+                showGridLines: true
+            }
+        });
+        
+        //? Add headers with formatting
+        worksheet.columns = headersToUse.map(header => ({
+            header: this.formatColumnHeader(header),
+            key: header,
+            width: 18
+        }));
+
+        //? Apply header styling
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD3D3D3' }
+        };
+
+        //! CRITICAL OPTIMIZATION: Use smaller, more frequent chunks
+        const CHUNK_SIZE = PERFORMANCE_CONFIG.CHUNK_SIZE;
+        const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
+        
+        logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
+        
+        //? Update progress tracking
+        if (exportId) {
+            const progressInfo = {
+                totalCount,
+                totalChunks,
+                chunkSize: CHUNK_SIZE,
+                status: 'processing-chunks'
+            };
+            if (partProgress) {
+                progressInfo.partProgress = partProgress;
+            }
+            this.activeExports.set(exportId, { progress: 10, ...progressInfo });
+        }
+        
+        let processedCount = 0;
+        let lastLoggedPercentage = -1;
+        let startProcessingTime = Date.now();
+
+        //=================================
+        // Process data in chunks using pagination
+        //=================================
+        for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
+            //? Force garbage collection before processing large chunks
+            if (global.gc && offset % (CHUNK_SIZE * 5) === 0) {
+                global.gc();
+            }
+            
+            //? Calculate current progress percentage
+            const currentChunk = Math.floor(offset / CHUNK_SIZE);
+            let percentage = Math.floor((offset / totalCount) * 100);
+            
+            //? Update progress tracking
+            if (exportId) {
+                const progress = 10 + ((offset / totalCount) * 85);
+                this.activeExports.set(exportId, { 
+                    ...this.activeExports.get(exportId),
+                    progress,
+                    currentChunk,
+                    processedCount
+                });
+            }
+            
+            //? Prepare the paginated query
+            const paginatedQuery = `${query} LIMIT ${CHUNK_SIZE} OFFSET ${offset}`;
+            const chunkRecords = await db.getMany(paginatedQuery, params);
+            
+            if (chunkRecords.length === 0) {
+                break; // No more records
+            }
+            
+            //? Optimize memory usage by creating rows directly
+            const rowsToAdd = chunkRecords.map(record => {
+                const rowData = {};
+                
+                for (const column of headersToUse) {
+                    if (column === 'phone') {
+                        //! FIXED: Ensure phone formatting works properly
+                        if (record[column] === '[null]' || !record[column]) {
+                            rowData[column] = ''; // Replace '[null]' with empty string
+                        } else {
+                            // Store original phone
+                            rowData[column] = record[column];
+                            
+                            // Format phone number if that column is requested
+                            if (headersToUse.includes('formattedPhone')) {
+                                rowData['formattedPhone'] = this.formatPhoneNumber(record[column]);
+                            }
+                        }
+                    } else {
+                        rowData[column] = record[column] || '';
+                    }
+                }
+                
+                return rowData;
+            });
+            
+            //? Add all rows at once (more efficient)
+            worksheet.addRows(rowsToAdd);
+            
+            //? Clear references to help GC
+            rowsToAdd.length = 0;
+            
+            //? Update progress
+            processedCount += chunkRecords.length;
+            percentage = Math.floor((processedCount / totalCount) * 100);
+            
+            //? Only log every few percent to reduce log spam
+            if (percentage >= lastLoggedPercentage + PERFORMANCE_CONFIG.PROGRESS_INTERVAL) {
+                const elapsedSeconds = (Date.now() - startProcessingTime) / 1000;
+                const recordsPerSecond = Math.round(processedCount / elapsedSeconds);
+                
+                logger.info(`Processed ${processedCount}/${totalCount} records (${percentage}%), ${recordsPerSecond} records/sec`);
+                lastLoggedPercentage = percentage;
+            }
+        }
+        
+        //? Update progress before saving
+        if (exportId) {
+            this.activeExports.set(exportId, { 
+                ...this.activeExports.get(exportId),
+                progress: 95, 
+                status: 'saving-file',
+                processedCount 
+            });
+        }
+
+        try {
+            //? Use optimized excel options to reduce memory during save
+            const options = { 
+                ...PERFORMANCE_CONFIG.EXCEL_OPTIMIZATION
+            };
+            
+            // Save workbook to file with optimized options
+            await workbook.xlsx.writeFile(filepath, options);
+        } catch (error) {
+            logger.error(`Error saving Excel file: ${error.message}`);
+            throw error;
+        }
+
+        //? Get file size for logging
+        const stats = fs.statSync(filepath);
+        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        
+        //? Calculate performance metrics
+        const totalDurationSec = ((Date.now() - startProcessingTime) / 1000).toFixed(1);
+        const recordsPerSecond = Math.round(processedCount / totalDurationSec);
+        
+        logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}, speed: ${recordsPerSecond} records/sec`);
+        
+        //? Force a garbage collection after saving
+        if (global.gc) {
+            global.gc();
+        }
+        
+        //? Update progress to complete
+        if (exportId) {
+            this.activeExports.set(exportId, { 
+                ...this.activeExports.get(exportId),
+                progress: 100, 
+                status: 'completed',
+                fileSize: fileSizeMB,
+                recordsPerSecond
+            });
+        }
+
+        return {
+            filename,
+            filepath,
+            count: processedCount,
+            fileSize: fileSizeMB
+        };
+    }
+
+    /**
+     * * Get the status of an active export
+     * @param {string} exportId - Export ID
+     * @returns {Object|null} Export status info or null if not found
+     */
+    getExportStatus(exportId) {
+        return this.activeExports.get(exportId) || null;
+    }
+
+    /**
+     * * Get all active exports
+     * @returns {Array} List of active exports
+     */
+    getAllActiveExports() {
+        return Array.from(this.activeExports.entries()).map(([id, status]) => ({
+            id,
+            ...status
+        }));
+    }
+
+    /**
+     * * Get export performance metrics
+     * @returns {Object} Performance metrics
+     */
+    getPerformanceMetrics() {
+        return {
+            ...this.metrics,
+            activeExports: this.activeExports.size,
+            configuration: PERFORMANCE_CONFIG
+        };
     }
 
     /**
@@ -940,8 +1591,7 @@ class ExportService {
             const filename = `Random_Category_Leads_${dateTime}.xlsx`;
             const filepath = path.join(this.exportDirectory || '.', filename);
 
-            // Build base query for random_category_leads table
-            // FIXED: Replace the SELECT * with explicit column selection to avoid GROUP BY issues
+            //! Build base query for random_category_leads table with explicit column selection
             let baseQuery = `
                 SELECT 
                     id, name, email, phone, website, domain, address, city, 
@@ -957,98 +1607,28 @@ class ExportService {
 
             // Add each filter condition
             if (filter.state) {
-                baseQuery += ` AND state = $${paramIndex++}`;
+                baseQuery += ` AND state = $${paramIndex}`;
                 baseParams.push(filter.state);
+                paramIndex++;
             }
 
-            // FIX: Add proper city filter handling
+            //! FIX: Add proper city filter handling with ILIKE
             if (filter.city) {
-                baseQuery += ` AND city ILIKE $${paramIndex++}`;
+                baseQuery += ` AND city ILIKE $${paramIndex}`;
                 baseParams.push(`%${filter.city}%`); // Use ILIKE with wildcards for better matching
                 logger.info(`Adding city filter for "${filter.city}"`);
             }
 
-            if (filter.searchTerm) {
-                baseQuery += ` AND category = $${paramIndex++}`;
-                baseParams.push(filter.searchTerm);
-            }
+            // ...existing filter conditions...
 
-            // Email filter
-            if (filter.hasEmail === true) {
-                baseQuery += ` AND email IS NOT NULL AND email != ''`;
-            } else if (filter.hasEmail === false) {
-                baseQuery += ` AND (email IS NULL OR email = '')`;
-            }
-
-            // Website filter
-            if (filter.hasWebsite === true) {
-                baseQuery += ` AND website IS NOT NULL AND website != ''`;
-            } else if (filter.hasWebsite === false) {
-                baseQuery += ` AND (website IS NULL OR website = '')`;
-            }
-
-            // Phone filter - Now properly handling '[null]' value
-            if (filter.hasPhone === true) {
-                baseQuery += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
-            } else if (filter.hasPhone === false) {
-                baseQuery += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
-            } else if (filter.excludeNullPhone === true) {
-                // Special filter to exclude '[null]' phone values but include valid phones or empty values
-                baseQuery += ` AND phone != '[null]'`;
-            }
-
-            // Address filter
-            if (filter.hasAddress === true) {
-                baseQuery += ` AND address IS NOT NULL AND address != ''`;
-            } else if (filter.hasAddress === false) {
-                baseQuery += ` AND (address IS NULL OR address = '')`;
-            }
-
-            // Category filters for inclusion/exclusion
-            if (filter.includeCategories && filter.includeCategories.length > 0) {
-                const placeholders = filter.includeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
-                baseQuery += ` AND category IN (${placeholders})`;
-                baseParams.push(...filter.includeCategories);
-                paramIndex += filter.includeCategories.length;
-            }
-
-            if (filter.excludeCategories && filter.excludeCategories.length > 0) {
-                const placeholders = filter.excludeCategories.map((_, idx) => `$${paramIndex + idx}`).join(',');
-                baseQuery += ` AND category NOT IN (${placeholders})`;
-                baseParams.push(...filter.excludeCategories);
-                paramIndex += filter.excludeCategories.length;
-            }
-
-            // Rating filter
-            if (filter.minRating) {
-                baseQuery += ` AND rating >= $${paramIndex++}`;
-                baseParams.push(parseFloat(filter.minRating));
-            }
-
-            // Keywords filter
-            if (filter.keywords) {
-                const keywords = filter.keywords.split(',').map(k => k.trim()).filter(Boolean);
-                if (keywords.length > 0) {
-                    baseQuery += ' AND (';
-                    const conditions = [];
-                    for (const keyword of keywords) {
-                        conditions.push(`(name ILIKE $${paramIndex} OR category ILIKE $${paramIndex})`);
-                        baseParams.push(`%${keyword}%`);
-                        paramIndex++;
-                    }
-                    baseQuery += conditions.join(' OR ') + ')';
-                }
-            }
+            //! CRITICAL FIX: Always add ORDER BY clause before LIMIT and OFFSET
+            baseQuery += ` ORDER BY name`;
 
             // Log the query for debugging
             logger.info(`Export query: ${baseQuery.replace(/\s+/g, ' ')}`);
             logger.info(`Export parameters: ${baseParams.join(', ')}`);
 
-            // Add order by clause
-            baseQuery += ' ORDER BY name';
-
             // First get the total count for progress tracking
-            // FIX: Make sure we use the exact same WHERE conditions for the count query
             const countQueryBase = `SELECT COUNT(*) FROM random_category_leads WHERE 1=1`;
             const whereClause = baseQuery.split('WHERE 1=1')[1].split('ORDER BY')[0];
             const countQuery = countQueryBase + whereClause;
@@ -1068,7 +1648,7 @@ class ExportService {
                 };
             }
 
-            // Check if CSV should be used for very large datasets
+            //? Check if CSV should be used for very large datasets
             const USE_CSV_THRESHOLD = 100000;
             let shouldUseCsv = totalCount > USE_CSV_THRESHOLD;
             
@@ -1077,7 +1657,9 @@ class ExportService {
                 return await this.exportRandomCategoryLeadsAsCsv(baseQuery, baseParams, totalCount, columns, dateTime);
             }
 
+            //=================================
             // Split large exports into multiple files if needed
+            //=================================
             const MAX_RECORDS_PER_FILE = 50000;
             if (totalCount > MAX_RECORDS_PER_FILE) {
                 const numFiles = Math.ceil(totalCount / MAX_RECORDS_PER_FILE);
@@ -1089,9 +1671,8 @@ class ExportService {
                     const endRecord = Math.min(startRecord + MAX_RECORDS_PER_FILE, totalCount);
                     logger.info(`Creating file ${fileIndex + 1}/${numFiles} with records ${startRecord + 1}-${endRecord}`);
                     
-                    // CRITICAL FIX: Always add ORDER BY clause before LIMIT and OFFSET
-                    // Create a paginated query for this file with proper ORDER BY clause
-                    const paginatedQuery = `${baseQuery} ORDER BY name LIMIT ${MAX_RECORDS_PER_FILE} OFFSET ${startRecord}`;
+                    //! Create a paginated query for this file with proper ORDER BY clause
+                    const paginatedQuery = `${baseQuery} LIMIT ${MAX_RECORDS_PER_FILE} OFFSET ${startRecord}`;
                     
                     // Generate unique filename for this part
                     const partFilename = `Random_Category_Leads_${dateTime}_part${fileIndex + 1}of${numFiles}.xlsx`;
@@ -1121,7 +1702,6 @@ class ExportService {
             }
 
             // For single file export, ensure ORDER BY is added to the base query
-            baseQuery += ` ORDER BY name`;
             logger.info(`Starting Excel file creation with ${totalCount} records at ${filepath}`);
             
             // Call the refactored method for Excel export
@@ -1158,16 +1738,16 @@ class ExportService {
 
         const headersToUse = columns && columns.length > 0 ? columns : defaultColumns;
         
-        // Create workbook with optimized options
+        //? Create workbook with optimized options for memory efficiency
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Leads Generator';
         workbook.created = new Date();
         
-        // Use options to reduce memory usage
+        //? Use options to reduce memory usage
         workbook.properties.date1904 = false;
         
         const worksheet = workbook.addWorksheet('Leads', {
-            // These options help reduce memory usage
+            //? These options help reduce memory usage
             properties: {
                 defaultColWidth: 15,
                 filterMode: false,
@@ -1190,9 +1770,8 @@ class ExportService {
             fgColor: { argb: 'FFD3D3D3' }
         };
 
-        // Process data in MUCH smaller chunks to avoid memory issues
-        // CRITICAL FIX: Use drastically smaller chunk size
-        const CHUNK_SIZE = 2500; // Reduced chunk size for memory efficiency
+        //! CRITICAL FIX: Use drastically smaller chunk size for memory efficiency
+        const CHUNK_SIZE = 500; 
         const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
         
         logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
@@ -1200,12 +1779,14 @@ class ExportService {
         let processedCount = 0;
         let lastLoggedPercentage = -1;
 
-        // Pre-allocate memory for the worksheet rows
+        //? Pre-allocate memory for the worksheet rows
         worksheet.startRow = 1; // Set the starting row for writing data
 
+        //=================================
         // Process data in chunks using pagination
+        //=================================
         for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
-            // Force garbage collection before each chunk if available
+            //? Force garbage collection before each chunk if available
             if (global.gc) {
                 global.gc();
             }
@@ -1218,7 +1799,7 @@ class ExportService {
                 break; // No more records
             }
             
-            // Use reduced object copies to save memory
+            //? Use reduced object copies to save memory
             const rowsToAdd = [];
             
             // Add rows to worksheet - only include necessary columns
@@ -1236,12 +1817,12 @@ class ExportService {
                 rowsToAdd.push(rowData);
             }
             
-            // Add all rows at once (more efficient)
+            //? Add all rows at once (more efficient)
             if (rowsToAdd.length > 0) {
                 worksheet.addRows(rowsToAdd);
             }
             
-            // Clear references to help GC
+            //? Clear references to help GC
             rowsToAdd.length = 0;
             
             // Update progress
@@ -1254,12 +1835,12 @@ class ExportService {
                 lastLoggedPercentage = percentage;
             }
             
-            // Add a small delay to free up the event loop
+            //? Add a small delay to free up the event loop
             await new Promise(resolve => setTimeout(resolve, 5));
         }
 
         try {
-            // Use manual optimization to reduce memory during save
+            //? Use manual optimization to reduce memory during save
             const options = { 
                 useStyles: true,
                 useSharedStrings: false, // Disable shared strings to reduce memory
@@ -1278,7 +1859,7 @@ class ExportService {
         
         logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}`);
         
-        // Force a garbage collection after saving
+        //? Force a garbage collection after saving
         if (global.gc) {
             global.gc();
         }

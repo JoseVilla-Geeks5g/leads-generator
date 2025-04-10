@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ColumnSelector from '../export/ColumnSelector';
+import { Progress } from "@/components/ui/progress";
 
 // Helper function to get the correct base URL
 function getBaseUrl() {
@@ -27,7 +28,60 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
     const [exportStats, setExportStats] = useState(null);
     const [selectedColumns, setSelectedColumns] = useState([]);
     const [forceUnfiltered, setForceUnfiltered] = useState(false);
+    const [exportProgress, setExportProgress] = useState(0);
+    const [exportId, setExportId] = useState(null);
+    const [progressDetails, setProgressDetails] = useState(null);
+    const progressInterval = useRef(null);
     const router = useRouter();
+
+    useEffect(() => {
+        return () => {
+            if (progressInterval.current) {
+                clearInterval(progressInterval.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (exportStatus === 'loading' && exportId) {
+            progressInterval.current = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/export/status?id=${exportId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setExportProgress(data.progress || 0);
+                        setProgressDetails(data);
+
+                        if (data.status === 'completed' || data.status === 'error' || data.progress >= 100) {
+                            clearInterval(progressInterval.current);
+
+                            if (data.status === 'completed') {
+                                setExportStatus('success');
+                                setMessage(`Export completed successfully with ${data.processedCount || '?'} records.`);
+
+                                if (downloadUrl) {
+                                    const refreshedUrl = downloadUrl.replace(
+                                        /^http:\/\/localhost:[0-9]+/,
+                                        getBaseUrl()
+                                    );
+                                    setDownloadUrl(refreshedUrl);
+                                }
+                            }
+
+                            if (data.status === 'error') {
+                                setExportStatus('error');
+                                setMessage(`Export failed: ${data.error || 'Unknown error'}`);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking export status:', error);
+                }
+            }, 1000);
+
+            return () => clearInterval(progressInterval.current);
+        }
+    }, [exportStatus, exportId]);
 
     const handleExport = async () => {
         try {
@@ -35,14 +89,15 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
             setMessage('Exporting data...');
             setDownloadUrl(null);
             setExportStats(null);
+            setExportProgress(0);
+            setProgressDetails(null);
 
-            // Create export parameters
             const exportParams = {
                 filter: cleanFilter(),
                 forceUnfiltered,
                 columns: selectedColumns.length > 0 ? selectedColumns : null,
                 excludeNullPhone: filter.excludeNullPhone === true,
-                dataSource: dataSource // Use selected data source
+                dataSource: dataSource
             };
 
             console.log('Export params:', exportParams);
@@ -56,25 +111,25 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
             const data = await response.json();
 
             if (response.ok) {
-                setExportStatus('success');
-                setMessage(`Export completed successfully with ${data.count} records.`);
-
-                // If we got a download URL from the server, make sure it has the correct base URL
                 if (data.downloadUrl) {
-                    // Replace any localhost URLs with the production URL
+                    setExportStatus('success');
+                    setMessage(`Export completed successfully with ${data.count} records.`);
+
                     const fixedUrl = data.downloadUrl.replace(
                         /^http:\/\/localhost:[0-9]+/,
                         getBaseUrl()
                     );
                     setDownloadUrl(fixedUrl);
-                }
-                // Otherwise, construct one with the correct base URL
-                else if (data.filename) {
+                } else if (data.exportId) {
+                    setExportId(data.exportId);
+                } else if (data.filename) {
+                    setExportStatus('success');
+                    setMessage(`Export completed successfully.`);
+
                     const baseUrl = getBaseUrl();
                     setDownloadUrl(`${baseUrl}/api/export/download?file=${encodeURIComponent(data.filename)}`);
                 }
 
-                // Set export statistics
                 if (data.diagnostics) {
                     setExportStats(data.diagnostics);
                 }
@@ -87,11 +142,10 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
             setExportStatus('error');
             setMessage('An unexpected error occurred. Please try again.');
         } finally {
-            window.scrollTo(0, 0); // Scroll to top to show message
+            window.scrollTo(0, 0);
         }
     };
 
-    // Clean filter to remove null values
     const cleanFilter = () => {
         const cleanedFilter = {};
         Object.entries(filter).forEach(([key, value]) => {
@@ -149,8 +203,31 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                         </Alert>
                     )}
 
+                    {exportStatus === 'loading' && (
+                        <div className="mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium">Export in progress...</span>
+                                <span className="text-sm">{Math.round(exportProgress)}%</span>
+                            </div>
+                            <Progress value={exportProgress} className="h-2" />
+
+                            {progressDetails && (
+                                <div className="mt-2 text-xs text-muted-foreground">
+                                    {progressDetails.status === 'counting' && 'Counting records...'}
+                                    {progressDetails.status === 'preparing-excel' && 'Preparing export file...'}
+                                    {progressDetails.status === 'processing-chunks' &&
+                                        `Processing ${progressDetails.processedCount || 0} of ${progressDetails.totalCount || '?'} records...`}
+                                    {progressDetails.status === 'saving-file' && 'Saving file...'}
+                                    {progressDetails.status === 'splitting-files' &&
+                                        `Large dataset detected. Splitting into ${progressDetails.numFiles || 'multiple'} files...`}
+                                    {progressDetails.status === 'exporting-part' &&
+                                        `Exporting part ${progressDetails.partProgress?.currentFile || 1} of ${progressDetails.partProgress?.numFiles || '?'}...`}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="grid gap-4 py-4">
-                        {/* Data Source Selection */}
                         <div className="grid gap-2">
                             <Label htmlFor="dataSource">Data Source</Label>
                             <Select
@@ -177,12 +254,10 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
 
                         {showFilters && (
                             <>
-                                {/* Filter options */}
                                 <div className="grid gap-2">
                                     <Label>Filter Options</Label>
 
                                     <div className="grid grid-cols-2 gap-4 mt-1">
-                                        {/* Email Status */}
                                         <div className="space-y-1">
                                             <Label htmlFor="hasEmail" className="text-sm">Email Status</Label>
                                             <Select
@@ -205,7 +280,6 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                             </Select>
                                         </div>
 
-                                        {/* Website Status - Fixed */}
                                         <div className="space-y-1">
                                             <Label htmlFor="hasWebsite" className="text-sm">Website Status</Label>
                                             <Select
@@ -228,7 +302,6 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                             </Select>
                                         </div>
 
-                                        {/* Phone Status */}
                                         <div className="space-y-1">
                                             <Label htmlFor="hasPhone" className="text-sm">Phone Status</Label>
                                             <Select
@@ -251,7 +324,6 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                             </Select>
                                         </div>
 
-                                        {/* Address Status - Fixed */}
                                         <div className="space-y-1">
                                             <Label htmlFor="hasAddress" className="text-sm">Address Status</Label>
                                             <Select
@@ -275,7 +347,6 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                         </div>
                                     </div>
 
-                                    {/* Additional filter options */}
                                     <div className="flex flex-col gap-2 mt-2">
                                         <div className="flex items-center space-x-2">
                                             <Checkbox
@@ -314,7 +385,6 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                             </>
                         )}
 
-                        {/* Stats */}
                         {exportStats && (
                             <div className="mt-4 p-4 border rounded-md bg-muted">
                                 <h4 className="font-medium mb-2">Export Statistics</h4>
@@ -343,7 +413,7 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                             {exportStatus === 'loading' ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Exporting...
+                                    Exporting... {Math.round(exportProgress)}%
                                 </>
                             ) : (
                                 <>

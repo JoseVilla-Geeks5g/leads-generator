@@ -1,15 +1,15 @@
 /**
- * Simple logging service with levels and optional file output
+ * * Simple logging service with levels and optional file output
  */
 
 import fs from 'fs';
 import path from 'path';
 
-// Check if we're running on server
+//? Check if we're running on server
 const isServer = typeof window === 'undefined';
 
 /**
- * Centralized logging service with different log levels and formatting
+ * * Centralized logging service with different log levels and formatting
  */
 class Logger {
     constructor() {
@@ -20,10 +20,10 @@ class Logger {
             'error': 3,
         };
 
-        // Set default level from environment or default to info
+        //? Set default level from environment or default to info
         this.currentLevel = this.logLevels[process.env.LOG_LEVEL?.toLowerCase() || 'info'];
 
-        // Error count tracking for diagnostics
+        //! Error count tracking for diagnostics
         this.errorCounts = {
             total: 0,
             database: 0,
@@ -32,7 +32,7 @@ class Logger {
             other: 0
         };
 
-        // Keep track of the last few errors for diagnostics
+        //? Keep track of the last few errors for diagnostics
         this.recentErrors = [];
         this.maxRecentErrors = 10;
 
@@ -44,7 +44,7 @@ class Logger {
                     fs.mkdirSync(this.logDir, { recursive: true });
                 }
 
-                // Create log streams
+                //? Create log streams
                 this.errorStream = fs.createWriteStream(
                     path.join(this.logDir, 'error.log'),
                     { flags: 'a' }
@@ -61,7 +61,7 @@ class Logger {
     }
 
     /**
-     * Format a log message with timestamp and level
+     * * Format a log message with timestamp and level
      * @param {string} level - Log level
      * @param {string} message - Message to log
      * @returns {string} - Formatted message
@@ -72,7 +72,7 @@ class Logger {
     }
 
     /**
-     * Log a debug message
+     * * Log a debug message
      * @param {string} message - Message to log
      */
     debug(message) {
@@ -84,7 +84,7 @@ class Logger {
     }
 
     /**
-     * Log an info message
+     * * Log an info message
      * @param {string} message - Message to log
      */
     info(message) {
@@ -96,7 +96,7 @@ class Logger {
     }
 
     /**
-     * Log a warning message
+     * * Log a warning message
      * @param {string} message - Message to log
      */
     warn(message) {
@@ -108,7 +108,7 @@ class Logger {
     }
 
     /**
-     * Log an error message
+     * * Log an error message
      * @param {string} message - Error message
      * @param {Error} [error] - Optional error object
      */
@@ -123,10 +123,10 @@ class Logger {
             }
         }
 
-        // Track error count for diagnostics
+        //! Track error count for diagnostics
         this.errorCounts.total++;
 
-        // Categorize errors
+        //? Categorize errors
         if (message.includes('database') || message.includes('Database') ||
             message.includes('query') || message.includes('column') ||
             message.includes('table')) {
@@ -144,7 +144,7 @@ class Logger {
             this.errorCounts.other++;
         }
 
-        // Store recent errors
+        //? Store recent errors
         this.recentErrors.unshift({
             timestamp: new Date().toISOString(),
             message,
@@ -158,7 +158,7 @@ class Logger {
     }
 
     /**
-     * Get diagnostics information
+     * * Get diagnostics information
      * @returns {Object} - Diagnostics data
      */
     getDiagnostics() {
@@ -172,7 +172,7 @@ class Logger {
     }
 
     /**
-     * Set the log level
+     * * Set the log level
      * @param {string} level - New log level
      */
     setLogLevel(level) {
@@ -185,10 +185,10 @@ class Logger {
         if (!isServer) return;
 
         try {
-            // Write to combined log
+            //? Write to combined log
             this.combinedStream.write(message + '\n');
 
-            // Also write to error log if it's an error
+            //? Also write to error log if it's an error
             if (isError) {
                 this.errorStream.write(message + '\n');
             }

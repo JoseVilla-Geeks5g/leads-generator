@@ -1,18 +1,20 @@
 const { Pool } = require('pg');
 const dotenv = require('dotenv');
 
-// Load environment variables
+//? Load environment variables
 dotenv.config();
 
+//=================================
 // Singleton database connection
+//=================================
 let pool;
 
 function getPool() {
     if (!pool) {
-        // Configure database connection with proper SSL settings for Render
+        //! Configure database connection with proper SSL settings for Render
         pool = new Pool({
             connectionString: process.env.DATABASE_URL,
-            // Always use SSL for Render databases
+            //? Always use SSL for Render databases
             ssl: {
                 rejectUnauthorized: false
             },
@@ -26,7 +28,7 @@ function getPool() {
             max: 20
         });
 
-        // Add error handler for the pool
+        //? Add error handler for the pool
         pool.on('error', (err) => {
             console.error('Unexpected database pool error', err);
         });
@@ -36,7 +38,9 @@ function getPool() {
     return pool;
 }
 
+//=================================
 // Helper functions for schema operations
+//=================================
 async function checkTableExists(tableName) {
     const pool = getPool();
     const result = await pool.query(`
@@ -86,14 +90,14 @@ async function checkIndexExists(indexName) {
 }
 
 /**
- * Initialize database tables and ensure schema is correct
+ * * Initialize database tables and ensure schema is correct
  */
 async function initializeTables() {
     try {
         const pool = getPool();
         console.log('Starting database initialization...');
 
-        // Create tables if they don't exist
+        //? Create tables if they don't exist
         await pool.query(`
             CREATE TABLE IF NOT EXISTS categories (
                 id SERIAL PRIMARY KEY,
@@ -181,24 +185,24 @@ async function initializeTables() {
             );
         `);
 
-        // Alter table to change address column type if needed
+        //! Alter table to change address column type if needed
         try {
             await pool.query(`
                 ALTER TABLE business_listings 
                 ALTER COLUMN address TYPE TEXT;
             `).catch(e => {
-                // Ignore if column is already TEXT type
+                //? Ignore if column is already TEXT type
                 if (!e.message.includes('already exists')) {
                     console.error('Error altering address column:', e.message);
                 }
             });
             
-            // Also fix random_category_leads
+            //? Also fix random_category_leads
             await pool.query(`
                 ALTER TABLE random_category_leads 
                 ALTER COLUMN address TYPE TEXT;
             `).catch(e => {
-                // Ignore if column is already TEXT type
+                //? Ignore if column is already TEXT type
                 if (!e.message.includes('already exists')) {
                     console.error('Error altering address column in random_category_leads:', e.message);
                 }
@@ -207,35 +211,37 @@ async function initializeTables() {
             console.error('Error altering column types:', err.message);
         }
 
-        // Check for location column in scraping_tasks and add it if it doesn't exist
+        //? Check for location column in scraping_tasks and add it if it doesn't exist
         const locationColumnExists = await checkColumnExists('scraping_tasks', 'location');
         if (!locationColumnExists) {
             console.log('Adding location column to scraping_tasks table');
             await pool.query(`ALTER TABLE scraping_tasks ADD COLUMN location VARCHAR(255) DEFAULT ''`);
         }
 
-        // Check for params column in scraping_tasks
+        //? Check for params column in scraping_tasks
         const paramsColumnExists = await checkColumnExists('scraping_tasks', 'params');
         if (!paramsColumnExists) {
             console.log('Adding params column to scraping_tasks table');
             await pool.query(`ALTER TABLE scraping_tasks ADD COLUMN params TEXT`);
         }
 
-        // Ensure limit column exists and is properly quoted
+        //! Ensure limit column exists and is properly quoted
         const limitColumnExists = await checkColumnExists('scraping_tasks', 'limit');
         if (!limitColumnExists) {
             console.log('Adding limit column to scraping_tasks table');
             await pool.query(`ALTER TABLE scraping_tasks ADD COLUMN "limit" INTEGER DEFAULT 100`);
         }
 
-        // Check for keywords column in scraping_tasks
+        //? Check for keywords column in scraping_tasks
         const keywordsColumnExists = await checkColumnExists('scraping_tasks', 'keywords');
         if (!keywordsColumnExists) {
             console.log('Adding keywords column to scraping_tasks table');
             await pool.query(`ALTER TABLE scraping_tasks ADD COLUMN keywords TEXT DEFAULT ''`);
         }
 
+        //=================================
         // Create indexes for better performance
+        //=================================
         const indexes = [
             { name: 'idx_task_id', table: 'business_listings', column: 'task_id' },
             { name: 'idx_search_term', table: 'business_listings', column: 'search_term' },
@@ -312,9 +318,11 @@ async function initializeTables() {
     }
 }
 
+//=================================
 // Main database interface
+//=================================
 const db = {
-    // Test the database connection
+    //? Test the database connection
     testConnection: async () => {
         try {
             const pool = getPool();
@@ -327,7 +335,7 @@ const db = {
         }
     },
 
-    // Initialize tables
+    //? Initialize tables
     init: async () => {
         await initializeTables();
     },
@@ -482,13 +490,13 @@ const db = {
         }
     },
 
-    // Add a specific method for email updates to help debug issues
+    //? Add a specific method for email updates to help debug issues
     updateEmail: async (businessId, email, notes) => {
         const pool = getPool();
         try {
             console.log(`Updating email for business ID ${businessId} to ${email}`);
 
-            // Use a transaction for greater reliability
+            //? Use a transaction for greater reliability
             const client = await pool.connect();
 
             try {
@@ -508,7 +516,7 @@ const db = {
                 );
 
                 if (result.rowCount === 0) {
-                    // Try with numeric conversion if businessId is string
+                    //? Try with numeric conversion if businessId is string
                     if (typeof businessId === 'string' && !isNaN(businessId)) {
                         const numericId = parseInt(businessId, 10);
                         console.log(`No rows updated with string ID "${businessId}", trying with numeric ID ${numericId}`);
