@@ -5,8 +5,29 @@ import { useRouter } from 'next/navigation';
 import ColumnSelector from '../export/ColumnSelector';
 import { Progress } from "@/components/ui/progress";
 import { Button, CircularProgress } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, Loader2 } from '@mui/icons-material';
 import axios from 'axios';
+
+// Add missing UI component imports
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter,
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  Link,
+  Label,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Checkbox
+} from "@/components/ui";
 
 // Helper function to get the correct base URL
 function getBaseUrl() {
@@ -34,6 +55,7 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
     const [exportProgress, setExportProgress] = useState(0);
     const [exportId, setExportId] = useState(null);
     const [progressDetails, setProgressDetails] = useState(null);
+    const [isExporting, setIsExporting] = useState(false); // Add missing state variable
     const progressInterval = useRef(null);
     const router = useRouter();
 
@@ -61,19 +83,26 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                             if (data.status === 'completed') {
                                 setExportStatus('success');
                                 setMessage(`Export completed successfully with ${data.processedCount || '?'} records.`);
+                                setIsExporting(false);
 
-                                if (downloadUrl) {
-                                    const refreshedUrl = downloadUrl.replace(
+                                if (data.downloadUrl) {
+                                    const refreshedUrl = data.downloadUrl.replace(
                                         /^http:\/\/localhost:[0-9]+/,
                                         getBaseUrl()
                                     );
                                     setDownloadUrl(refreshedUrl);
+                                    
+                                    // Auto-initiate download if filename is provided
+                                    if (data.filename) {
+                                        initiateDownload(data.filename);
+                                    }
                                 }
                             }
 
                             if (data.status === 'error') {
                                 setExportStatus('error');
                                 setMessage(`Export failed: ${data.error || 'Unknown error'}`);
+                                setIsExporting(false);
                             }
                         }
                     }
@@ -88,22 +117,33 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
 
     const handleExport = async () => {
         try {
+            setIsExporting(true);
             setExportStatus('loading');
-            setMessage('Exporting data...');
+            setMessage('Preparing data for export...');
             setDownloadUrl(null);
             setExportStats(null);
             setExportProgress(0);
             setProgressDetails(null);
 
+            const cleanedFilter = cleanFilter();
+            
             const exportParams = {
-                filter: cleanFilter(),
+                filter: cleanedFilter,
                 forceUnfiltered,
                 columns: selectedColumns.length > 0 ? selectedColumns : null,
                 excludeNullPhone: filter.excludeNullPhone === true,
                 dataSource: dataSource
             };
 
+            // Add more detailed logging to help troubleshoot
             console.log('Export params:', exportParams);
+            console.log(`Selected data source: ${dataSource}`);
+            console.log(`Filters applied:`, cleanedFilter);
+            
+            // Display a message to the user about the current operation
+            setMessage(`Exporting data from ${dataSource === 'all' ? 'all sources' : 
+                        dataSource === 'business_listings' ? 'main listings' : 
+                        'random categories'} table...`);
 
             const response = await fetch('/api/export', {
                 method: 'POST',
@@ -116,21 +156,32 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
             if (response.ok) {
                 if (data.downloadUrl) {
                     setExportStatus('success');
-                    setMessage(`Export completed successfully with ${data.count} records.`);
+                    setMessage(`Export completed successfully with ${data.count || 0} records.`);
 
                     const fixedUrl = data.downloadUrl.replace(
                         /^http:\/\/localhost:[0-9]+/,
                         getBaseUrl()
                     );
                     setDownloadUrl(fixedUrl);
+                    
+                    // If we have a filename, automatically start the download
+                    if (data.filename) {
+                        initiateDownload(data.filename);
+                    }
                 } else if (data.exportId) {
                     setExportId(data.exportId);
+                    // The status polling will handle the rest of the process
                 } else if (data.filename) {
                     setExportStatus('success');
                     setMessage(`Export completed successfully.`);
+                    setIsExporting(false);
 
                     const baseUrl = getBaseUrl();
-                    setDownloadUrl(`${baseUrl}/api/export/download?file=${encodeURIComponent(data.filename)}`);
+                    const downloadUrl = `${baseUrl}/api/export/download?filename=${encodeURIComponent(data.filename)}`;
+                    setDownloadUrl(downloadUrl);
+                    
+                    // Auto-initiate download
+                    initiateDownload(data.filename);
                 }
 
                 if (data.diagnostics) {
@@ -138,12 +189,15 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                 }
             } else {
                 setExportStatus('error');
-                setMessage(data.error || 'Export failed. Please try again.');
+                setMessage(data.error || data.message || 'Export failed. Please try again.');
+                setIsExporting(false);
+                console.error('Export API responded with error:', data);
             }
         } catch (error) {
             console.error('Export error:', error);
             setExportStatus('error');
             setMessage('An unexpected error occurred. Please try again.');
+            setIsExporting(false);
         } finally {
             window.scrollTo(0, 0);
         }
@@ -159,57 +213,13 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
         return cleanedFilter;
     };
 
-    const handleExportClick = async () => {
-        setIsExporting(true);
-        setExportStatus('Preparing data for export...');
-        
-        try {
-          // Call the export API
-          const response = await fetch('/api/export', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              filter: filter || {},
-              columns: columns || [] 
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Export failed with status: ${response.status}`);
-          }
-          
-          const result = await response.json();
-          
-          if (result.error) {
-            throw new Error(result.error);
-          }
-          
-          if (result.isEmpty) {
-            setExportStatus('No data to export.');
-            return;
-          }
-          
-          setExportId(result.exportId);
-          
-          // Start polling for export status
-          checkExportStatus(result.exportId);
-          
-        } catch (error) {
-          console.error('Export error:', error);
-          setExportStatus(`Export failed: ${error.message}`);
-          setError(error.message);
-          setIsExporting(false);
-        }
-    };
-
     const initiateDownload = (filename) => {
         try {
             setExportStatus('Downloading file...');
             
             // Create the download URL with filename parameter
-            const downloadUrl = `/api/export/download?filename=${encodeURIComponent(filename)}`;
+            const baseUrl = getBaseUrl();
+            const downloadUrl = `${baseUrl}/api/export/download?filename=${encodeURIComponent(filename)}`;
             
             // Add timestamp to avoid browser caching
             const urlWithTimestamp = `${downloadUrl}&t=${Date.now()}`;
@@ -231,25 +241,29 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
               // Clean up after click
               setTimeout(() => {
                 document.body.removeChild(link);
-                setExportStatus('Download complete!');
+                setExportStatus('success');
+                setMessage('Download complete!');
                 setIsExporting(false);
               }, 100);
             }, 50);
             
-          } catch (error) {
+        } catch (error) {
             console.error('Download error:', error);
-            setExportStatus(`Download failed: ${error.message}`);
+            setExportStatus('error');
+            setMessage(`Download failed: ${error.message}`);
             setIsExporting(false);
-          }
+        }
     };
 
     return (
         <>
             <Button
                 onClick={() => setShowModal(true)}
-                disabled={disabled}
+                disabled={disabled || isExporting}
+                variant="contained"
+                color="primary"
+                startIcon={<DownloadIcon />}
             >
-                <DownloadIcon className="mr-2 h-4 w-4" />
                 Export Data
             </Button>
 
@@ -273,7 +287,7 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                         className="text-primary hover:underline"
                                         target="_blank"
                                     >
-                                        <Button variant="outline" size="sm" className="flex items-center">
+                                        <Button variant="outlined" size="small" className="flex items-center">
                                             <DownloadIcon className="mr-1 h-4 w-4" />
                                             Download File
                                         </Button>
@@ -432,6 +446,25 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                                 </SelectContent>
                                             </Select>
                                         </div>
+
+                                        <div className="space-y-1 col-span-2">
+                                            <Label htmlFor="category" className="text-sm">Category</Label>
+                                            <input
+                                                id="category"
+                                                type="text"
+                                                className="w-full p-2 border rounded-md text-sm"
+                                                placeholder="Enter category to filter by"
+                                                value={filter.category || ''}
+                                                onChange={(e) => setFilter({
+                                                    ...filter,
+                                                    category: e.target.value || null
+                                                })}
+                                                disabled={exportStatus === 'loading'}
+                                            />
+                                            <div className="text-xs text-gray-500">
+                                                Filter by business category (partial matching)
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="flex flex-col gap-2 mt-2">
@@ -464,13 +497,36 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                                 htmlFor="forceUnfiltered"
                                                 className="text-sm font-normal cursor-pointer"
                                             >
-                                                Export all data (ignore filters)
+                                                Include all data (filters still apply if set)
                                             </Label>
                                         </div>
                                     </div>
                                 </div>
                             </>
                         )}
+
+                        {/* Add ColumnSelector component here */}
+                        <div className="grid gap-2">
+                            <Label>Select Columns for Export</Label>
+                            <ColumnSelector 
+                                columns={[
+                                    { key: 'name', label: 'Business Name' },
+                                    { key: 'email', label: 'Email' },
+                                    { key: 'phone', label: 'Phone' },
+                                    { key: 'formattedPhone', label: 'Formatted Phone' },
+                                    { key: 'website', label: 'Website' },
+                                    { key: 'address', label: 'Address' },
+                                    { key: 'city', label: 'City' },
+                                    { key: 'state', label: 'State' },
+                                    { key: 'country', label: 'Country' },
+                                    { key: 'postal_code', label: 'Postal Code' },
+                                    { key: 'category', label: 'Category' },
+                                    { key: 'rating', label: 'Rating' }
+                                ]}
+                                selectedColumns={selectedColumns}
+                                onChange={setSelectedColumns}
+                            />
+                        </div>
 
                         {exportStats && (
                             <div className="mt-4 p-4 border rounded-md bg-muted">
@@ -486,28 +542,21 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
 
                     <DialogFooter className="gap-2">
                         <Button
-                            variant="outline"
+                            variant="outlined"
                             onClick={() => setShowModal(false)}
                             disabled={exportStatus === 'loading'}
                         >
                             Cancel
                         </Button>
                         <Button
+                            variant="contained"
+                            color="primary"
                             onClick={handleExport}
-                            disabled={exportStatus === 'loading'}
+                            disabled={exportStatus === 'loading' || isExporting}
                             className={exportStatus === 'loading' ? 'animate-pulse' : ''}
+                            startIcon={exportStatus === 'loading' ? <CircularProgress size={16} /> : <DownloadIcon />}
                         >
-                            {exportStatus === 'loading' ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Exporting... {Math.round(exportProgress)}%
-                                </>
-                            ) : (
-                                <>
-                                    <DownloadIcon className="mr-2 h-4 w-4" />
-                                    Export
-                                </>
-                            )}
+                            {exportStatus === 'loading' ? `Exporting... ${Math.round(exportProgress)}%` : 'Export'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

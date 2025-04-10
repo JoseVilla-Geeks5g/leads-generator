@@ -15650,3 +15650,11 @@ Call log:
 [2025-04-10T20:53:01.495Z] [ERROR] Database query error: syntax error at or near "LIMIT"
 [2025-04-10T20:53:01.496Z] [ERROR] Error exporting random category leads: syntax error at or near "LIMIT"
 [2025-04-10T20:53:01.496Z] [ERROR] Memory limit reached during export: syntax error at or near "LIMIT"
+[2025-04-10T21:23:40.262Z] [ERROR] Export error: this.exportToExcelFile is not a function
+[2025-04-10T21:23:40.263Z] [ERROR] Export error: this.exportToExcelFile is not a function
+[2025-04-10T22:38:35.170Z] [ERROR] Error estimating export: Cannot read properties of null (reading 'category')
+[2025-04-10T22:40:07.785Z] [ERROR] Error estimating export: Cannot read properties of undefined (reading 'category')
+[2025-04-10T22:40:12.960Z] [ERROR] Error estimating export: Cannot read properties of null (reading 'category')
+[2025-04-10T22:40:27.923Z] [ERROR] Error estimating export: Cannot read properties of null (reading 'category')
+[2025-04-10T22:40:34.070Z] [ERROR] Error estimating export: Cannot read properties of null (reading 'category')
+[2025-04-10T22:40:35.306Z] [ERROR] Error estimating export: Cannot read properties of undefined (reading 'category')

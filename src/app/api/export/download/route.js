@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import { promisify } from 'util';
-import { exportService } from '@/services';
 import logger from '@/services/logger';
-
-// Use promisify to convert fs functions to promise-based
-const stat = promisify(fs.stat);
-const readFile = promisify(fs.readFile);
 
 /**
  * API route for downloading exported files
@@ -18,66 +12,55 @@ export async function GET(request) {
         const filename = searchParams.get('filename');
         
         if (!filename) {
+            logger.error('Download request missing filename parameter');
             return NextResponse.json({ error: 'Filename is required' }, { status: 400 });
         }
         
-        // Ensure the filename is sanitized to prevent path traversal
+        // Sanitize the filename to prevent path traversal
         const sanitizedFilename = path.basename(filename);
         
-        // Get the export directory and construct the full filepath
-        const exportDirectory = exportService.exportDirectory;
-        const filepath = path.join(exportDirectory || process.cwd(), 'exports', sanitizedFilename);
+        // Define the exports directory (must match where files are created)
+        const exportDirectory = path.join(process.cwd(), 'exports');
+        const filepath = path.join(exportDirectory, sanitizedFilename);
         
         logger.info(`Download request for file: ${filepath}`);
         
-        try {
-            // Check if file exists and get its size
-            const stats = await stat(filepath);
-            
-            if (!stats.isFile()) {
-                logger.error(`Requested path is not a file: ${filepath}`);
-                return NextResponse.json({ error: 'File not found' }, { status: 404 });
-            }
-            
-            // Read the file into memory
-            const fileBuffer = await readFile(filepath);
-            
-            // Determine content type based on file extension
-            let contentType = 'application/octet-stream'; // Default binary
-            
-            if (sanitizedFilename.endsWith('.xlsx')) {
-                contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-            } else if (sanitizedFilename.endsWith('.csv')) {
-                contentType = 'text/csv';
-            }
-            
-            logger.info(`Serving file: ${filepath}, size: ${stats.size}, type: ${contentType}`);
-            
-            // Create response with proper headers for file download
-            const response = new NextResponse(fileBuffer, {
-                status: 200,
-                headers: {
-                    'Content-Type': contentType,
-                    'Content-Disposition': `attachment; filename="${sanitizedFilename}"`,
-                    'Content-Length': String(stats.size),
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
-            });
-            
-            return response;
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                logger.error(`File not found: ${filepath}`);
-                return NextResponse.json({ error: 'File not found' }, { status: 404 });
-            }
-            
-            logger.error(`Error reading file: ${error.message}`);
-            throw error;
+        // Check if file exists
+        if (!fs.existsSync(filepath)) {
+            logger.error(`File not found: ${filepath}`);
+            return NextResponse.json({ error: 'File not found' }, { status: 404 });
         }
+        
+        // Read file as buffer
+        const fileBuffer = fs.readFileSync(filepath);
+        const stats = fs.statSync(filepath);
+        
+        // Determine content type based on extension
+        let contentType = 'application/octet-stream';
+        if (sanitizedFilename.endsWith('.xlsx')) {
+            contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        } else if (sanitizedFilename.endsWith('.csv')) {
+            contentType = 'text/csv';
+        }
+        
+        logger.info(`Serving file: ${filepath}, size: ${stats.size}, type: ${contentType}`);
+        
+        // Create response headers for file download
+        const headers = new Headers();
+        headers.set('Content-Type', contentType);
+        headers.set('Content-Disposition', `attachment; filename="${sanitizedFilename}"`);
+        headers.set('Content-Length', String(stats.size));
+        headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        headers.set('Pragma', 'no-cache');
+        headers.set('Expires', '0');
+        
+        // Return the file as a stream
+        return new Response(fileBuffer, {
+            status: 200,
+            headers: headers
+        });
     } catch (error) {
         logger.error(`Download error: ${error.message}`);
-        return NextResponse.json({ error: 'Download failed' }, { status: 500 });
+        return NextResponse.json({ error: 'Download failed', details: error.message }, { status: 500 });
     }
 }

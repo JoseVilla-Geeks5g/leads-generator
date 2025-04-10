@@ -89,6 +89,21 @@ export async function POST(request) {
             estimatedCount = await exportService.getTotalCount();
         }
 
+        // Inside the POST handler after other filter conditions
+        if (filter.category) {
+            // For business_listings table
+            if (!dataSource || dataSource === 'business_listings' || dataSource === 'all') {
+                queryConditions.push(`search_term ILIKE $${paramIndex++}`);
+                params.push(`%${filter.category}%`);
+            }
+            
+            // For random_category_leads table
+            if (dataSource === 'random_category_leads' || dataSource === 'all') {
+                randomQueryConditions.push(`category ILIKE $${paramIndex++}`);
+                randomParams.push(`%${filter.category}%`);
+            }
+        }
+
         const timeToEstimate = Date.now() - startTime;
 
         // Store in cache
