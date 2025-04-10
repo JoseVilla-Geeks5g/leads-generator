@@ -33,7 +33,8 @@ export async function POST(request) {
             state=${state !== undefined ? state : 'undefined'}, 
             filter=${filter ? JSON.stringify(filter) : 'undefined'}, 
             forceUnfiltered=${forceUnfiltered !== undefined ? forceUnfiltered : 'undefined'},
-            isRandomCategoryTask=${isRandom !== undefined ? isRandom : 'undefined'}`);
+            isRandomCategoryTask=${isRandom !== undefined ? isRandom : 'undefined'},
+            dataSource=${dataSource}`);
 
         // Initialize database
         await db.init();
@@ -74,7 +75,7 @@ export async function POST(request) {
         const downloadHost = 'https://leads-generator-8en5.onrender.com';
 
         try {
-            // Special case for random_category_leads export
+            // Handle data source selection
             if (dataSource === 'random_category_leads') {
                 logger.info('Exporting from random_category_leads table');
                 
@@ -107,8 +108,43 @@ export async function POST(request) {
                     }
                     throw memoryError; // Re-throw if it's not a memory error
                 }
+            } 
+            // Handle "all" data source - combine both tables
+            else if (dataSource === 'all') {
+                logger.info('Exporting from all data sources (combined)');
+                
+                try {
+                    // Force Node.js garbage collection if available
+                    if (global.gc) {
+                        logger.info('Running garbage collection before export');
+                        global.gc();
+                    }
+                    
+                    // Export from combined sources
+                    if (cleanFilter && Object.keys(cleanFilter).length > 0) {
+                        result = await exportService.exportCombinedSources(cleanFilter, columns);
+                    } else {
+                        // No filters - export all data
+                        result = await exportService.exportCombinedSources({}, columns);
+                    }
+                    
+                    // Run garbage collection again after export
+                    if (global.gc) {
+                        logger.info('Running garbage collection after export');
+                        global.gc();
+                    }
+                } catch (memoryError) {
+                    if (memoryError.message && memoryError.message.includes('heap')) {
+                        logger.error(`Memory limit reached during export: ${memoryError.message}`);
+                        return NextResponse.json({
+                            error: 'Memory limit reached. The dataset is too large for a single export.',
+                            suggestion: 'Try exporting with more specific filters to reduce the result set size.'
+                        }, { status: 413 }); // 413 Payload Too Large
+                    }
+                    throw memoryError; // Re-throw if it's not a memory error
+                }
             }
-            // Regular cases - handle with existing code paths
+            // Regular cases - handle with existing code paths for business_listings
             else if (taskId) {
                 // Task-specific export - pass data source via isRandom flag
                 logger.info(`Exporting data for task: ${taskId}, isRandom=${isRandom || dataSource === 'random_category_leads'}`);

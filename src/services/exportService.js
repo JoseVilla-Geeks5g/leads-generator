@@ -1118,11 +1118,11 @@ class ExportService {
                     for (const column of headersToUse) {
                         rowData[column] = record[column] || '';
                         
-                        // Special handling for phone numbers
+                        // Special handling for phone numbers, removed the formatting since it's already formatted
                         if (column === 'phone' && record[column]) {
                             // Format phone if it's not '[null]'
                             if (record[column] !== '[null]') {
-                                rowData[column] = this.formatPhoneNumber(record[column]);
+                                rowData[column] = record[column]; // Already formatted
                             } else {
                                 rowData[column] = ''; // Replace '[null]' with empty string
                             }
@@ -1190,6 +1190,240 @@ class ExportService {
             // Uppercase the first character
             .replace(/^./, str => str.toUpperCase())
             .trim();
+    }
+
+    /**
+     * Export data from combined sources (both business_listings and random_category_leads)
+     * @param {Object} filter - Filter criteria
+     * @param {Array} columns - Selected columns
+     * @returns {Object} Export result
+     */
+    async exportCombinedSources(filter = {}, columns = null) {
+        try {
+            // Create filename and filepath first
+            const dateTime = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+            const filename = `Combined_Leads_${dateTime}.xlsx`;
+            const filepath = path.join(this.exportDirectory || '.', filename);
+
+            // Build base queries for both tables with the same filter conditions
+            let businessListingsQuery = `
+                SELECT 
+                    id, name, email, phone, website, domain, address, city, 
+                    state, postal_code, country, search_term as category, rating, 
+                    task_id, created_at, updated_at,
+                    'business_listings' as source_table
+                FROM business_listings 
+                WHERE 1=1`;
+                
+            let randomCategoryLeadsQuery = `
+                SELECT 
+                    id, name, email, phone, website, domain, address, city, 
+                    state, postal_code, country, category, rating, 
+                    task_id, created_at, updated_at,
+                    'random_category_leads' as source_table
+                FROM random_category_leads 
+                WHERE 1=1`;
+                
+            const baseParams = [];
+            let paramIndex = 1;
+
+            // Add each filter condition to both queries
+            // For state
+            if (filter.state) {
+                businessListingsQuery += ` AND state = $${paramIndex}`;
+                randomCategoryLeadsQuery += ` AND state = $${paramIndex}`;
+                baseParams.push(filter.state);
+                paramIndex++;
+            }
+
+            // For city
+            if (filter.city) {
+                businessListingsQuery += ` AND city ILIKE $${paramIndex}`;
+                randomCategoryLeadsQuery += ` AND city ILIKE $${paramIndex}`;
+                baseParams.push(`%${filter.city}%`);
+                paramIndex++;
+            }
+
+            // For search term/category
+            if (filter.searchTerm) {
+                businessListingsQuery += ` AND search_term = $${paramIndex}`;
+                randomCategoryLeadsQuery += ` AND category = $${paramIndex}`;
+                baseParams.push(filter.searchTerm);
+                paramIndex++;
+            }
+
+            // Email filter
+            if (filter.hasEmail === true) {
+                businessListingsQuery += ` AND email IS NOT NULL AND email != ''`;
+                randomCategoryLeadsQuery += ` AND email IS NOT NULL AND email != ''`;
+            } else if (filter.hasEmail === false) {
+                businessListingsQuery += ` AND (email IS NULL OR email = '')`;
+                randomCategoryLeadsQuery += ` AND (email IS NULL OR email = '')`;
+            }
+
+            // Website filter - FIXED
+            if (filter.hasWebsite === true) {
+                businessListingsQuery += ` AND website IS NOT NULL AND website != ''`;
+                randomCategoryLeadsQuery += ` AND website IS NOT NULL AND website != ''`;
+            } else if (filter.hasWebsite === false) {
+                businessListingsQuery += ` AND (website IS NULL OR website = '')`;
+                randomCategoryLeadsQuery += ` AND (website IS NULL OR website = '')`;
+            }
+
+            // Phone filter
+            if (filter.hasPhone === true) {
+                businessListingsQuery += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
+                randomCategoryLeadsQuery += ` AND phone IS NOT NULL AND phone != '' AND phone != '[null]'`;
+            } else if (filter.hasPhone === false) {
+                businessListingsQuery += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
+                randomCategoryLeadsQuery += ` AND (phone IS NULL OR phone = '' OR phone = '[null]')`;
+            } else if (filter.excludeNullPhone === true) {
+                businessListingsQuery += ` AND phone != '[null]'`;
+                randomCategoryLeadsQuery += ` AND phone != '[null]'`;
+            }
+
+            // Address filter - FIXED
+            if (filter.hasAddress === true) {
+                businessListingsQuery += ` AND address IS NOT NULL AND address != ''`;
+                randomCategoryLeadsQuery += ` AND address IS NOT NULL AND address != ''`;
+            } else if (filter.hasAddress === false) {
+                businessListingsQuery += ` AND (address IS NULL OR address = '')`;
+                randomCategoryLeadsQuery += ` AND (address IS NULL OR address = '')`;
+            }
+
+            // Combine queries with UNION ALL
+            const combinedQuery = `
+                (${businessListingsQuery})
+                UNION ALL
+                (${randomCategoryLeadsQuery})
+                ORDER BY name
+            `;
+
+            // Log the query for debugging
+            logger.info(`Combined export query created`);
+            
+            // Get total count for progress tracking
+            const countQuery = `
+                SELECT COUNT(*) as total FROM (
+                    ${combinedQuery}
+                ) as combined_data
+            `;
+            
+            const countResult = await db.getOne(countQuery, baseParams);
+            const totalCount = parseInt(countResult?.total || '0');
+            
+            logger.info(`Combined count query returned ${totalCount} records`);
+
+            if (totalCount === 0) {
+                logger.warn(`No records found matching filter criteria from combined sources`);
+                return {
+                    filename: 'No_Results.xlsx',
+                    filepath: '',
+                    count: 0,
+                    isEmpty: true
+                };
+            }
+
+            // Create workbook with streaming approach for large datasets
+            logger.info(`Starting combined Excel file creation with ${totalCount} records at ${filepath}`);
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Combined Leads');
+
+            // Define headers - either use selected columns or default set
+            const defaultColumns = [
+                'name', 'email', 'phone', 'website', 'address', 'city', 
+                'state', 'postal_code', 'category', 'rating', 'source_table'
+            ];
+
+            const headersToUse = columns && columns.length > 0 ? columns : defaultColumns;
+            
+            // Add headers with formatting
+            worksheet.columns = headersToUse.map(header => ({
+                header: this.formatColumnHeader(header),
+                key: header,
+                width: 20
+            }));
+
+            // Apply header styling
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFD3D3D3' }
+            };
+
+            // Process data in chunks to avoid memory issues
+            const CHUNK_SIZE = 10000;
+            const totalChunks = Math.ceil(totalCount / CHUNK_SIZE);
+            
+            logger.info(`Processing ${totalCount} records in ${totalChunks} chunks`);
+            
+            let processedCount = 0;
+            let lastLoggedPercentage = -1;
+
+            // Process data in chunks using pagination
+            for (let offset = 0; offset < totalCount; offset += CHUNK_SIZE) {
+                // Query for this chunk with pagination - Use the explicitly selected columns query
+                const paginatedQuery = `
+                    ${combinedQuery} 
+                    LIMIT ${CHUNK_SIZE} OFFSET ${offset}
+                `;
+                
+                const chunkRecords = await db.getMany(paginatedQuery, baseParams);
+
+                // Add rows to worksheet
+                for (const record of chunkRecords) {
+                    // Pick only the fields we want to include in the export
+                    const rowData = {};
+                    for (const column of headersToUse) {
+                        rowData[column] = record[column] || '';
+                        
+                        // Special handling for phone numbers
+                        if (column === 'phone' && record[column]) {
+                            // Format phone if it's not '[null]'
+                            if (record[column] !== '[null]') {
+                                rowData[column] = record[column]; // Already formatted
+                            } else {
+                                rowData[column] = ''; // Replace '[null]' with empty string
+                            }
+                        }
+                    }
+                    worksheet.addRow(rowData);
+                }
+                
+                // Force garbage collection between chunks
+                if (global.gc) {
+                    global.gc();
+                }
+                
+                // Update progress
+                processedCount += chunkRecords.length;
+                const percentage = Math.floor((processedCount / totalCount) * 100);
+                
+                if (percentage > lastLoggedPercentage + 7) {
+                    logger.info(`Processed ${processedCount}/${totalCount} records (${percentage}%)`);
+                    lastLoggedPercentage = percentage;
+                }
+            }
+
+            // Save workbook to file
+            await workbook.xlsx.writeFile(filepath);
+
+            // Get file size for logging
+            const stats = fs.statSync(filepath);
+            const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+            
+            logger.info(`Combined Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}`);
+
+            return {
+                filename,
+                filepath,
+                count: processedCount
+            };
+        } catch (error) {
+            logger.error(`Error exporting combined sources: ${error.message}`);
+            throw error;
+        }
     }
 }
 

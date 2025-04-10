@@ -10,88 +10,55 @@ function getBaseUrl() {
     return process.env.NEXT_PUBLIC_APP_URL || 'https://leads-generator-8en5.onrender.com';
 }
 
-export default function ExportButton({ taskId = null, filter = null, className = "", fullWidth = false, isRandomCategoryTask }) {
-    const [isExporting, setIsExporting] = useState(false);
-    const [showExportOptions, setShowExportOptions] = useState(false);
-    const [exportFormat, setExportFormat] = useState('xlsx');
-    const [exportError, setExportError] = useState(null);
-    const [availableColumns, setAvailableColumns] = useState([
-        { key: 'name', label: 'Business Name' },
-        { key: 'email', label: 'Email' },
-        { key: 'phone', label: 'Phone' },
-        { key: 'formattedPhone', label: 'Formatted Phone (12065551234)' },
-        { key: 'website', label: 'Website' },
-        { key: 'address', label: 'Address' },
-        { key: 'city', label: 'City' },
-        { key: 'state', label: 'State' },
-        { key: 'country', label: 'Country' },
-        { key: 'category', label: 'Category' },
-        { key: 'rating', label: 'Rating' }
-    ]);
-    const [selectedColumns, setSelectedColumns] = useState([
-        'name', 'email', 'phone', 'formattedPhone', 'website', 'address', 'city', 'state'
-    ]);
-    const [dataSource, setDataSource] = useState(isRandomCategoryTask ? 'random_category_leads' : 'all');
+const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = true }) => {
+    const [exportStatus, setExportStatus] = useState('idle'); // idle, loading, success, error
+    const [showModal, setShowModal] = useState(false);
+    const [filter, setFilter] = useState({
+        hasEmail: null,
+        hasWebsite: null,
+        hasPhone: null,
+        hasAddress: null,
+        excludeNullPhone: true,
+        ...initialFilters
+    });
+    const [dataSource, setDataSource] = useState('business_listings'); // Changed default to business_listings
+    const [message, setMessage] = useState('');
+    const [downloadUrl, setDownloadUrl] = useState(null);
+    const [exportStats, setExportStats] = useState(null);
+    const [selectedColumns, setSelectedColumns] = useState([]);
+    const [forceUnfiltered, setForceUnfiltered] = useState(false);
     const router = useRouter();
 
-    const exportTypes = [
-        { id: 'all', label: 'All Leads', description: 'Export all leads in the database' },
-        { id: 'filtered', label: 'Filtered Leads', description: 'Export leads matching current filters', disabled: !filter },
-        { id: 'task', label: 'Selected Task Only', description: 'Export leads from current task only', disabled: !taskId },
-        { id: 'hasEmail', label: 'With Emails Only', description: 'Export only leads that have email addresses' },
-        { id: 'withoutEmail', label: 'Without Emails', description: 'Export leads that need email finding' }
-    ];
-
-    const handleExport = async (type) => {
-        if (isExporting) return;
-
+    const handleExport = async () => {
         try {
-            setIsExporting(true);
-            setShowExportOptions(false);
-            setExportError(null);
+            setExportStatus('loading');
+            setMessage('Exporting data...');
+            setDownloadUrl(null);
+            setExportStats(null);
 
-            // Construct request body based on export type
-            const requestBody = {
-                taskId,
-                isRandom: isRandomCategoryTask || dataSource === 'random_category_leads',
-                columns: selectedColumns,
-                format: exportFormat,
-                dataSource: dataSource
+            // Create export parameters
+            const exportParams = {
+                filter: cleanFilter(),
+                forceUnfiltered,
+                columns: selectedColumns.length > 0 ? selectedColumns : null,
+                excludeNullPhone: filter.excludeNullPhone === true,
+                dataSource: dataSource // Use selected data source
             };
 
-            switch (type) {
-                case 'all':
-                    requestBody.forceUnfiltered = true;
-                    break;
-                case 'filtered':
-                    if (filter) {
-                        requestBody.filter = filter;
-                    }
-                    break;
-                case 'task':
-                    requestBody.taskId = taskId;
-                    break;
-                case 'hasEmail':
-                    requestBody.filter = { hasEmail: true };
-                    break;
-                case 'withoutEmail':
-                    requestBody.filter = { hasEmail: false };
-                    break;
-            }
+            console.log('Export params:', exportParams);
 
-            // Call export API
             const response = await fetch('/api/export', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(exportParams)
             });
 
             const data = await response.json();
-            
+
             if (response.ok) {
                 setExportStatus('success');
                 setMessage(`Export completed successfully with ${data.count} records.`);
-                
+
                 // If we got a download URL from the server, make sure it has the correct base URL
                 if (data.downloadUrl) {
                     // Replace any localhost URLs with the production URL
@@ -100,197 +67,296 @@ export default function ExportButton({ taskId = null, filter = null, className =
                         getBaseUrl()
                     );
                     setDownloadUrl(fixedUrl);
-                } 
+                }
                 // Otherwise, construct one with the correct base URL
                 else if (data.filename) {
                     const baseUrl = getBaseUrl();
                     setDownloadUrl(`${baseUrl}/api/export/download?file=${encodeURIComponent(data.filename)}`);
                 }
-                
+
+                // Set export statistics
+                if (data.diagnostics) {
+                    setExportStats(data.diagnostics);
+                }
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || errorData.warning || 'Export failed');
+                setExportStatus('error');
+                setMessage(data.error || 'Export failed. Please try again.');
             }
-
-            // If there's a warning (like no records found), show it
-            if (data.warning) {
-                alert(data.warning);
-                return;
-            }
-
-            // Open the download in a new tab
-            window.open(data.downloadUrl, '_blank');
         } catch (error) {
             console.error('Export error:', error);
-            setExportError(error.message);
-            alert(`Export failed: ${error.message}`);
+            setExportStatus('error');
+            setMessage('An unexpected error occurred. Please try again.');
         } finally {
-            setIsExporting(false);
+            window.scrollTo(0, 0); // Scroll to top to show message
         }
     };
 
+    // Clean filter to remove null values
+    const cleanFilter = () => {
+        const cleanedFilter = {};
+        Object.entries(filter).forEach(([key, value]) => {
+            if (value !== null) {
+                cleanedFilter[key] = value;
+            }
+        });
+        return cleanedFilter;
+    };
+
     return (
-        <div className="relative">
-            <button
-                onClick={() => setShowExportOptions(!showExportOptions)}
-                className={`btn btn-secondary ${fullWidth ? 'w-full' : ''} px-4 py-2.5 flex items-center justify-center shadow-sm ${className}`}
-                disabled={isExporting}
+        <>
+            <Button
+                onClick={() => setShowModal(true)}
+                disabled={disabled}
             >
-                {isExporting ? (
-                    <>
-                        <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
-                        Exporting...
-                    </>
-                ) : (
-                    <>
-                        <span className="material-icons mr-1.5 text-sm">file_download</span>
-                        Export Data
-                    </>
-                )}
-            </button>
+                <Download className="mr-2 h-4 w-4" />
+                Export Data
+            </Button>
 
-            {showExportOptions && (
-                <div className="absolute z-10 right-0 mt-2 bg-white rounded-md shadow-lg border border-light w-64">
-                    <div className="py-1">
-                        <div className="px-4 py-2 border-b border-light">
-                            <h3 className="text-sm font-medium">Export Options</h3>
-                        </div>
+            <Dialog open={showModal} onOpenChange={setShowModal}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Export Data</DialogTitle>
+                        <DialogDescription>
+                            Select options for the data export
+                        </DialogDescription>
+                    </DialogHeader>
 
-                        {exportTypes.map(type => (
-                            <button
-                                key={type.id}
-                                className={`w-full px-4 py-2 text-left text-sm hover:bg-accent transition ${type.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                onClick={() => !type.disabled && handleExport(type.id)}
-                                disabled={type.disabled || isExporting}
-                            >
-                                <div className="font-medium">{type.label}</div>
-                                <div className="text-xs text-gray-500">{type.description}</div>
-                            </button>
-                        ))}
+                    {exportStatus === 'success' && downloadUrl && (
+                        <Alert className="mb-4 bg-success-light border-success">
+                            <AlertTitle className="text-success">Export Successful</AlertTitle>
+                            <AlertDescription>
+                                {message}
+                                <div className="mt-2">
+                                    <Link
+                                        href={downloadUrl}
+                                        className="text-primary hover:underline"
+                                        target="_blank"
+                                    >
+                                        <Button variant="outline" size="sm" className="flex items-center">
+                                            <Download className="mr-1 h-4 w-4" />
+                                            Download File
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
-                        <div className="border-t border-light px-4 py-2">
-                            <button
-                                onClick={() => router.push('/export')}
-                                className="text-xs text-primary hover:underline"
-                            >
-                                Advanced Export Options
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    {exportStatus === 'error' && (
+                        <Alert className="mb-4 bg-error-light border-error">
+                            <AlertTitle className="text-error">Export Error</AlertTitle>
+                            <AlertDescription>{message}</AlertDescription>
+                        </Alert>
+                    )}
 
-            {showExportOptions && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowExportOptions(false)}>
-                    <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-semibold mb-4">Export Options</h3>
-
-                        {/* Column Selection */}
-                        <div className="mb-4">
-                            <ColumnSelector 
-                                columns={availableColumns}
-                                selectedColumns={selectedColumns}
-                                onChange={setSelectedColumns}
-                            />
-                        </div>
-
-                        {/* Format Selection */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium mb-2">Export Format</label>
-                            <div className="flex gap-3">
-                                <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${exportFormat === 'xlsx' ? 'bg-primary-light' : 'bg-accent'}`}>
-                                    <input
-                                        type="radio"
-                                        className="mr-2 accent-primary h-4 w-4"
-                                        checked={exportFormat === 'xlsx'}
-                                        onChange={() => setExportFormat('xlsx')}
-                                    />
-                                    <span className="text-sm">Excel (XLSX)</span>
-                                </label>
-
-                                <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${exportFormat === 'csv' ? 'bg-primary-light' : 'bg-accent'}`}>
-                                    <input
-                                        type="radio"
-                                        className="mr-2 accent-primary h-4 w-4"
-                                        checked={exportFormat === 'csv'}
-                                        onChange={() => setExportFormat('csv')}
-                                    />
-                                    <span className="text-sm">CSV</span>
-                                </label>
-                            </div>
-                        </div>
-
+                    <div className="grid gap-4 py-4">
                         {/* Data Source Selection */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium mb-2">Data Source</label>
-                            <div className="flex gap-3">
-                                <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${dataSource === 'all' ? 'bg-primary-light' : 'bg-accent'}`}>
-                                    <input
-                                        type="radio"
-                                        className="mr-2 accent-primary h-4 w-4"
-                                        checked={dataSource === 'all'}
-                                        onChange={() => setDataSource('all')}
-                                    />
-                                    <span className="text-sm">All Sources</span>
-                                </label>
-
-                                <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${dataSource === 'business_listings' ? 'bg-primary-light' : 'bg-accent'}`}>
-                                    <input
-                                        type="radio"
-                                        className="mr-2 accent-primary h-4 w-4"
-                                        checked={dataSource === 'business_listings'}
-                                        onChange={() => setDataSource('business_listings')}
-                                    />
-                                    <span className="text-sm">Main Listings</span>
-                                </label>
-
-                                <label className={`flex-1 flex items-center p-3 rounded-md hover:bg-primary-light transition cursor-pointer ${dataSource === 'random_category_leads' ? 'bg-primary-light' : 'bg-accent'}`}>
-                                    <input
-                                        type="radio"
-                                        className="mr-2 accent-primary h-4 w-4"
-                                        checked={dataSource === 'random_category_leads'}
-                                        onChange={() => setDataSource('random_category_leads')}
-                                    />
-                                    <span className="text-sm">Random Categories</span>
-                                </label>
+                        <div className="grid gap-2">
+                            <Label htmlFor="dataSource">Data Source</Label>
+                            <Select
+                                id="dataSource"
+                                value={dataSource}
+                                onValueChange={setDataSource}
+                                disabled={exportStatus === 'loading'}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Data Source" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Sources (Combined)</SelectItem>
+                                    <SelectItem value="business_listings">Main Listings</SelectItem>
+                                    <SelectItem value="random_category_leads">Random Categories</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="text-sm text-muted-foreground mt-1">
+                                {dataSource === 'all' && "Combines data from all sources"}
+                                {dataSource === 'business_listings' && "Business listings from regular scraped data"}
+                                {dataSource === 'random_category_leads' && "Leads generated from random category searches"}
                             </div>
                         </div>
 
-                        {exportError && (
-                            <div className="mb-4 p-3 bg-error-light text-error rounded-md">
-                                {exportError}
-                            </div>
+                        {showFilters && (
+                            <>
+                                {/* Filter options */}
+                                <div className="grid gap-2">
+                                    <Label>Filter Options</Label>
+
+                                    <div className="grid grid-cols-2 gap-4 mt-1">
+                                        {/* Email Status */}
+                                        <div className="space-y-1">
+                                            <Label htmlFor="hasEmail" className="text-sm">Email Status</Label>
+                                            <Select
+                                                id="hasEmail"
+                                                value={filter.hasEmail === null ? "null" : filter.hasEmail.toString()}
+                                                onValueChange={(value) => setFilter({
+                                                    ...filter,
+                                                    hasEmail: value === "null" ? null : value === "true"
+                                                })}
+                                                disabled={exportStatus === 'loading'}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Any email status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="null">Any email status</SelectItem>
+                                                    <SelectItem value="true">Has email</SelectItem>
+                                                    <SelectItem value="false">No email</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Website Status - Fixed */}
+                                        <div className="space-y-1">
+                                            <Label htmlFor="hasWebsite" className="text-sm">Website Status</Label>
+                                            <Select
+                                                id="hasWebsite"
+                                                value={filter.hasWebsite === null ? "null" : filter.hasWebsite.toString()}
+                                                onValueChange={(value) => setFilter({
+                                                    ...filter,
+                                                    hasWebsite: value === "null" ? null : value === "true"
+                                                })}
+                                                disabled={exportStatus === 'loading'}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Any website status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="null">Any website status</SelectItem>
+                                                    <SelectItem value="true">Has website</SelectItem>
+                                                    <SelectItem value="false">No website</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Phone Status */}
+                                        <div className="space-y-1">
+                                            <Label htmlFor="hasPhone" className="text-sm">Phone Status</Label>
+                                            <Select
+                                                id="hasPhone"
+                                                value={filter.hasPhone === null ? "null" : filter.hasPhone.toString()}
+                                                onValueChange={(value) => setFilter({
+                                                    ...filter,
+                                                    hasPhone: value === "null" ? null : value === "true"
+                                                })}
+                                                disabled={exportStatus === 'loading'}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Any phone status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="null">Any phone status</SelectItem>
+                                                    <SelectItem value="true">Has phone</SelectItem>
+                                                    <SelectItem value="false">No phone</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Address Status - Fixed */}
+                                        <div className="space-y-1">
+                                            <Label htmlFor="hasAddress" className="text-sm">Address Status</Label>
+                                            <Select
+                                                id="hasAddress"
+                                                value={filter.hasAddress === null ? "null" : filter.hasAddress.toString()}
+                                                onValueChange={(value) => setFilter({
+                                                    ...filter,
+                                                    hasAddress: value === "null" ? null : value === "true"
+                                                })}
+                                                disabled={exportStatus === 'loading'}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Any address status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="null">Any address status</SelectItem>
+                                                    <SelectItem value="true">Has address</SelectItem>
+                                                    <SelectItem value="false">No address</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    {/* Additional filter options */}
+                                    <div className="flex flex-col gap-2 mt-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="excludeNullPhone"
+                                                checked={filter.excludeNullPhone}
+                                                onCheckedChange={(checked) => setFilter({
+                                                    ...filter,
+                                                    excludeNullPhone: checked
+                                                })}
+                                                disabled={exportStatus === 'loading'}
+                                            />
+                                            <Label
+                                                htmlFor="excludeNullPhone"
+                                                className="text-sm font-normal cursor-pointer"
+                                            >
+                                                Exclude "[null]" phone values
+                                            </Label>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="forceUnfiltered"
+                                                checked={forceUnfiltered}
+                                                onCheckedChange={setForceUnfiltered}
+                                                disabled={exportStatus === 'loading'}
+                                            />
+                                            <Label
+                                                htmlFor="forceUnfiltered"
+                                                className="text-sm font-normal cursor-pointer"
+                                            >
+                                                Export all data (ignore filters)
+                                            </Label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
                         )}
 
-                        <div className="flex gap-3 justify-end">
-                            <button
-                                onClick={() => setShowExportOptions(false)}
-                                className="btn btn-outline px-4 py-2"
-                            >
-                                Cancel
-                            </button>
-
-                            <button
-                                onClick={handleExport}
-                                disabled={isExporting || selectedColumns.length === 0}
-                                className="btn btn-primary px-4 py-2 flex items-center gap-2"
-                            >
-                                {isExporting ? (
-                                    <>
-                                        <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
-                                        Exporting...
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-icons text-sm">download</span>
-                                        Export
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        {/* Stats */}
+                        {exportStats && (
+                            <div className="mt-4 p-4 border rounded-md bg-muted">
+                                <h4 className="font-medium mb-2">Export Statistics</h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>Total Records: {exportStats.totalCount || 'N/A'}</div>
+                                    <div>Duration: {exportStats.durationMs ? `${(exportStats.durationMs / 1000).toFixed(2)}s` : 'N/A'}</div>
+                                    <div>File Size: {exportStats.fileSizeMB ? `${exportStats.fileSizeMB} MB` : 'N/A'}</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
-            )}
-        </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowModal(false)}
+                            disabled={exportStatus === 'loading'}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleExport}
+                            disabled={exportStatus === 'loading'}
+                            className={exportStatus === 'loading' ? 'animate-pulse' : ''}
+                        >
+                            {exportStatus === 'loading' ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Exporting...
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
-}
+};
+
+export default ExportButton;
