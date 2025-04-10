@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ColumnSelector from '../export/ColumnSelector';
 import { Progress } from "@/components/ui/progress";
+import { Button, CircularProgress } from '@mui/material';
+import { Download as DownloadIcon } from '@mui/icons-material';
+import axios from 'axios';
 
 // Helper function to get the correct base URL
 function getBaseUrl() {
@@ -156,13 +159,97 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
         return cleanedFilter;
     };
 
+    const handleExportClick = async () => {
+        setIsExporting(true);
+        setExportStatus('Preparing data for export...');
+        
+        try {
+          // Call the export API
+          const response = await fetch('/api/export', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              filter: filter || {},
+              columns: columns || [] 
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Export failed with status: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          
+          if (result.isEmpty) {
+            setExportStatus('No data to export.');
+            return;
+          }
+          
+          setExportId(result.exportId);
+          
+          // Start polling for export status
+          checkExportStatus(result.exportId);
+          
+        } catch (error) {
+          console.error('Export error:', error);
+          setExportStatus(`Export failed: ${error.message}`);
+          setError(error.message);
+          setIsExporting(false);
+        }
+    };
+
+    const initiateDownload = (filename) => {
+        try {
+            setExportStatus('Downloading file...');
+            
+            // Create the download URL with filename parameter
+            const downloadUrl = `/api/export/download?filename=${encodeURIComponent(filename)}`;
+            
+            // Add timestamp to avoid browser caching
+            const urlWithTimestamp = `${downloadUrl}&t=${Date.now()}`;
+            
+            // Create a hidden link element for download
+            const link = document.createElement('a');
+            link.href = urlWithTimestamp;
+            link.download = filename; // This forces download instead of navigation
+            link.target = '_blank'; // Open in new tab as fallback
+            link.rel = 'noopener noreferrer'; // Security best practice
+            
+            // Add to DOM, click, then remove
+            document.body.appendChild(link);
+            
+            // Use a slight timeout to ensure the link is properly appended
+            setTimeout(() => {
+              link.click();
+              
+              // Clean up after click
+              setTimeout(() => {
+                document.body.removeChild(link);
+                setExportStatus('Download complete!');
+                setIsExporting(false);
+              }, 100);
+            }, 50);
+            
+          } catch (error) {
+            console.error('Download error:', error);
+            setExportStatus(`Download failed: ${error.message}`);
+            setIsExporting(false);
+          }
+    };
+
     return (
         <>
             <Button
                 onClick={() => setShowModal(true)}
                 disabled={disabled}
             >
-                <Download className="mr-2 h-4 w-4" />
+                <DownloadIcon className="mr-2 h-4 w-4" />
                 Export Data
             </Button>
 
@@ -187,7 +274,7 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                         target="_blank"
                                     >
                                         <Button variant="outline" size="sm" className="flex items-center">
-                                            <Download className="mr-1 h-4 w-4" />
+                                            <DownloadIcon className="mr-1 h-4 w-4" />
                                             Download File
                                         </Button>
                                     </Link>
@@ -417,7 +504,7 @@ const ExportButton = ({ disabled = false, initialFilters = {}, showFilters = tru
                                 </>
                             ) : (
                                 <>
-                                    <Download className="mr-2 h-4 w-4" />
+                                    <DownloadIcon className="mr-2 h-4 w-4" />
                                     Export
                                 </>
                             )}

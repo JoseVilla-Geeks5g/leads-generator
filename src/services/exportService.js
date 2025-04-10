@@ -205,6 +205,7 @@ class ExportService {
         try {
             //? Create filename and filepath first
             const dateTime = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+            // Always use .xlsx extension for Excel format
             const filename = `Random_Category_Leads_${dateTime}.xlsx`;
             const filepath = path.join(this.exportDirectory || '.', filename);
 
@@ -333,18 +334,20 @@ class ExportService {
                 };
             }
 
-            //? Check if CSV format would be better for very large datasets
-            const USE_CSV_THRESHOLD = 200000;
+            //? IMPORTANT: Always use Excel format (xlsx) unless the data is extremely large
+            //! Updated: Use a very high threshold to almost always use Excel
+            const USE_CSV_THRESHOLD = 1000000;
             let shouldUseCsv = totalCount > USE_CSV_THRESHOLD;
             
             if (shouldUseCsv) {
-                logger.info(`Dataset size (${totalCount}) exceeds Excel threshold (${USE_CSV_THRESHOLD}), using CSV format`);
+                logger.warn(`Dataset size (${totalCount}) exceeds Excel threshold (${USE_CSV_THRESHOLD}), using CSV format`);
+                // Should almost never happen with updated threshold
                 this.activeExports.set(exportId, { progress: 2, status: 'preparing-csv', totalCount });
                 return await this.exportRandomCategoryLeadsAsCsv(baseQuery, baseParams, totalCount, columns, dateTime, exportId);
             }
 
             //? Split large exports into multiple files if needed
-            const MAX_RECORDS_PER_FILE = 80000; // Increased since we have more CPU now
+            const MAX_RECORDS_PER_FILE = 80000; // Excel sheet limit is around 1M rows
             if (totalCount > MAX_RECORDS_PER_FILE) {
                 const numFiles = Math.ceil(totalCount / MAX_RECORDS_PER_FILE);
                 logger.info(`Large dataset detected (${totalCount} records). Splitting into ${numFiles} files.`);
@@ -430,6 +433,9 @@ class ExportService {
             //? Remove from active exports
             this.activeExports.delete(exportId);
             
+            // Make sure we indicate this is an Excel file in the result
+            result.format = 'excel';
+            
             return result;
             
         } catch (error) {
@@ -467,20 +473,22 @@ class ExportService {
             }
         });
         
-        //? Add headers with formatting
+        //? IMPROVED: Add headers with better formatting
         worksheet.columns = headersToUse.map(header => ({
             header: this.formatColumnHeader(header),
             key: header,
-            width: 18
+            width: this.getColumnWidth(header)
         }));
 
-        //? Apply header styling
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
+        //? Apply header styling - make it more distinct
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FF000000' } };
+        headerRow.fill = {
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: 'FFD3D3D3' }
         };
+        headerRow.alignment = { horizontal: 'center' };
 
         //! CRITICAL OPTIMIZATION: Use smaller, more frequent chunks
         const CHUNK_SIZE = PERFORMANCE_CONFIG.CHUNK_SIZE;
@@ -595,50 +603,61 @@ class ExportService {
         }
 
         try {
-            //? Use optimized excel options to reduce memory during save
+            //? IMPROVED: Better Excel options to ensure compatibility
             const options = { 
-                ...PERFORMANCE_CONFIG.EXCEL_OPTIMIZATION
+                filename: filepath,
+                useStyles: true,
+                useSharedStrings: true
             };
             
             // Save workbook to file with optimized options
-            await workbook.xlsx.writeFile(filepath, options);
+            await workbook.xlsx.writeFile(filepath);
+            
+            logger.info(`Excel file created successfully: ${filepath}, records: ${processedCount}`);
+            
+            // Return success result with format info included
+            return {
+                filename,
+                filepath,
+                count: processedCount,
+                format: 'excel',  // Explicitly set format
+                extension: 'xlsx' // Add explicit extension information
+            };
         } catch (error) {
             logger.error(`Error saving Excel file: ${error.message}`);
             throw error;
         }
+    }
 
-        //? Get file size for logging
-        const stats = fs.statSync(filepath);
-        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
-        
-        //? Calculate performance metrics
-        const totalDurationSec = ((Date.now() - startProcessingTime) / 1000).toFixed(1);
-        const recordsPerSecond = Math.round(processedCount / totalDurationSec);
-        
-        logger.info(`Excel file created successfully: ${filepath}, size: ${fileSizeMB} MB, records: ${processedCount}, speed: ${recordsPerSecond} records/sec`);
-        
-        //? Force a garbage collection after saving
-        if (global.gc) {
-            global.gc();
+    /**
+     * Get appropriate width for a column based on content type
+     */
+    getColumnWidth(columnName) {
+        // Set column widths based on expected content
+        switch(columnName) {
+            case 'name':
+                return 30;
+            case 'address':
+                return 35;
+            case 'email':
+                return 28;
+            case 'phone':
+            case 'formattedPhone':
+                return 18;
+            case 'website':
+            case 'domain':
+                return 30;
+            case 'category':
+                return 25;
+            case 'state':
+                return 10;
+            case 'postal_code':
+                return 12;
+            case 'notes':
+                return 40;
+            default:
+                return 15;
         }
-        
-        //? Update progress to complete
-        if (exportId) {
-            this.activeExports.set(exportId, { 
-                ...this.activeExports.get(exportId),
-                progress: 100, 
-                status: 'completed',
-                fileSize: fileSizeMB,
-                recordsPerSecond
-            });
-        }
-
-        return {
-            filename,
-            filepath,
-            count: processedCount,
-            fileSize: fileSizeMB
-        };
     }
 
     /**
@@ -2249,6 +2268,119 @@ class ExportService {
             throw error;
         }
     }
+
+    /**
+     * Export data based on filters
+     * @param {Object} filters - Filters to apply
+     * @param {string} format - Export format (excel or csv)
+     * @param {string} filepath - Path to save the file
+     * @returns {Object} Export result
+     */
+    async exportData(filters, format = 'excel', filepath) {
+      try {
+        // Set up filter conditions for the query
+        const conditions = [];
+        const queryParams = [];
+        let paramIndex = 1;
+        
+        // Apply category filter
+        if (filters.category) {
+          conditions.push(`category = $${paramIndex}`);
+          queryParams.push(filters.category);
+          paramIndex++;
+        }
+        
+        // Apply location filters
+        if (filters.city) {
+          conditions.push(`city = $${paramIndex}`);
+          queryParams.push(filters.city);
+          paramIndex++;
+        }
+        
+        if (filters.state) {
+          conditions.push(`state = $${paramIndex}`);
+          queryParams.push(filters.state);
+          paramIndex++;
+        }
+        
+        // Apply date range filters
+        if (filters.startDate) {
+          conditions.push(`created_at >= $${paramIndex}`);
+          queryParams.push(filters.startDate);
+          paramIndex++;
+        }
+        
+        if (filters.endDate) {
+          conditions.push(`created_at <= $${paramIndex}`);
+          queryParams.push(filters.endDate);
+          paramIndex++;
+        }
+        
+        // Apply email filter
+        if (filters.hasEmail !== undefined) {
+          if (filters.hasEmail) {
+            conditions.push(`email IS NOT NULL AND email != ''`);
+          } else {
+            conditions.push(`(email IS NULL OR email = '')`);
+          }
+        }
+        
+        // Apply website filter
+        if (filters.hasWebsite !== undefined) {
+          if (filters.hasWebsite) {
+            conditions.push(`website IS NOT NULL AND website != ''`);
+          } else {
+            conditions.push(`(website IS NULL OR website = '')`);
+          }
+        }
+        
+        // Apply task filter
+        if (filters.taskId) {
+          conditions.push(`task_id = $${paramIndex}`);
+          queryParams.push(filters.taskId);
+          paramIndex++;
+        }
+        
+        // Build the WHERE clause
+        const whereClause = conditions.length > 0 
+          ? `WHERE ${conditions.join(' AND ')}` 
+          : '';
+        
+        // Determine which table to query
+        const tableName = filters.useRandomCategoryTable 
+          ? 'random_category_leads' 
+          : 'business_listings';
+        
+        // Build the full query
+        const query = `
+          SELECT 
+            name, email, phone, 
+            CASE 
+              WHEN phone IS NOT NULL AND phone != '' THEN phone 
+              ELSE NULL 
+            END as "formattedPhone",
+            website, address, city, state, country, postal_code, 
+            rating, search_term, domain
+          FROM ${tableName}
+          ${whereClause}
+          ORDER BY name
+        `;
+        
+        // Execute the query
+        const db = require('./database').default;
+        const results = await db.getMany(query, queryParams);
+        
+        if (format === 'excel') {
+          return this.exportToExcelFile(results, filepath);
+        } else {
+          return this.exportToCsvFile(results, filepath);
+        }
+      } catch (error) {
+        logger.error(`Export error: ${error.message}`);
+        throw error;
+      }
+    }
+
 }
 
 // Create a singleton instance

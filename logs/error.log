@@ -15644,3 +15644,9 @@ Call log:
 [2025-04-09T23:30:58.896Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-30-26.xlsx
 [2025-04-09T23:31:59.800Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-30-26.xlsx
 [2025-04-09T23:33:36.450Z] [ERROR] File not found: C:\Users\USER\Desktop\Geeks5g\leads-generator\exports\Random_Category_Leads_2025-04-09T23-30-26.xlsx
+[2025-04-10T20:46:11.263Z] [ERROR] Database query error: syntax error at or near "LIMIT"
+[2025-04-10T20:46:11.263Z] [ERROR] Error exporting random category leads: syntax error at or near "LIMIT"
+[2025-04-10T20:46:11.263Z] [ERROR] Memory limit reached during export: syntax error at or near "LIMIT"
+[2025-04-10T20:53:01.495Z] [ERROR] Database query error: syntax error at or near "LIMIT"
+[2025-04-10T20:53:01.496Z] [ERROR] Error exporting random category leads: syntax error at or near "LIMIT"
+[2025-04-10T20:53:01.496Z] [ERROR] Memory limit reached during export: syntax error at or near "LIMIT"
