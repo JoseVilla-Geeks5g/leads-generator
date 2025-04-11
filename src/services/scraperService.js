@@ -667,19 +667,33 @@ class ScraperService {
         logger.info(`Starting Google Maps scraping for ${category} in ${location}`);
         
         try {
+            // Make sure the googleMapsScraper is imported and initialized
+            if (!googleMapsScraper) {
+                logger.error("Google Maps scraper is not available");
+                throw new Error("Google Maps scraper is not available");
+            }
+            
             // Build search query
             const searchQuery = `${category} in ${location}`;
             
-            // Set scraping options - no category limits
+            // Set scraping options
             const options = {
-                maxResults: 500, // Increased from 200 to 500 for more comprehensive data collection
+                maxResults: 100, // Reduced from 500 to 100 to help with stability
                 taskId: taskId
             };
+            
+            // Initialize the scraper if needed
+            try {
+                await googleMapsScraper.initialize();
+            } catch (initErr) {
+                logger.error(`Error initializing Google Maps scraper: ${initErr.message}`);
+                throw initErr;
+            }
             
             // Perform real scraping with our Maps scraper
             const businesses = await googleMapsScraper.scrapeBusinesses(searchQuery, options);
             
-            if (businesses.length === 0) {
+            if (!businesses || businesses.length === 0) {
                 logger.warn(`No businesses found for ${category} in ${location}`);
                 return 0;
             }
@@ -701,38 +715,10 @@ class ScraperService {
             let savedCount = 0;
             for (const business of businesses) {
                 try {
-                    // Extract domain from website if available
-                    let domain = null;
-                    if (business.website) {
-                        try {
-                            const urlObj = new URL(business.website);
-                            domain = urlObj.hostname.replace(/^www\./, '');
-                        } catch (e) {
-                            logger.debug(`Could not parse URL: ${business.website}`);
-                        }
-                    }
+                    // Handle potential null values and truncate data
+                    const processedBusiness = this.processBusinessData(business, city, state, category, taskId);
                     
-                    // Process postal code from address if present
-                    let postalCode = null;
-                    if (business.address) {
-                        const postalMatch = business.address.match(/\b\d{5}(?:-\d{4})?\b/);
-                        postalCode = postalMatch ? postalMatch[0] : null;
-                    }
-                    
-                    // Add review count to the notes field for reference
-                    const notes = business.reviewCount ? `Reviews: ${business.reviewCount}` : '';
-                    
-                    // Fix: Truncate any fields that might exceed their column length limits
-                    const truncatedName = business.name ? business.name.substring(0, 250) : 'Unnamed Business';
-                    const truncatedAddress = business.address ? business.address.substring(0, 2000) : 'No address available';
-                    const truncatedCity = city ? city.substring(0, 95) : '';
-                    const truncatedState = state ? state.substring(0, 95) : '';
-                    const truncatedPhone = business.phone ? business.phone.substring(0, 45) : null;
-                    const truncatedWebsite = business.website ? business.website.substring(0, 250) : null;
-                    const truncatedDomain = domain ? domain.substring(0, 250) : null;
-                    const truncatedCategory = category ? category.substring(0, 250) : 'Uncategorized';
-                    
-                    // Use both the regular business_listings table and our special random_category_leads
+                    // Insert into business_listings table
                     await db.query(`
                         INSERT INTO business_listings (
                             name, address, city, state, country, postal_code, phone, website, domain, 
@@ -742,64 +728,98 @@ class ScraperService {
                         )
                         ON CONFLICT (name, search_term) DO NOTHING
                     `, [
-                        truncatedName,
-                        truncatedAddress,
-                        truncatedCity,
-                        truncatedState,
+                        processedBusiness.name,
+                        processedBusiness.address,
+                        processedBusiness.city,
+                        processedBusiness.state,
                         'United States',
-                        postalCode,
-                        truncatedPhone,
-                        truncatedWebsite,
-                        truncatedDomain,
-                        business.rating || null,
-                        truncatedCategory,
+                        processedBusiness.postalCode,
+                        processedBusiness.phone,
+                        processedBusiness.website,
+                        processedBusiness.domain,
+                        processedBusiness.rating,
+                        processedBusiness.category,
                         new Date().toISOString(),
                         taskId,
-                        notes
-                    ]);
-                    
-                    // Also insert into random_category_leads table
-                    await db.query(`
-                        INSERT INTO random_category_leads (
-                            name, address, city, state, country, postal_code, phone, website, domain,
-                            rating, category, search_term, search_date, task_id, notes, created_at
-                        ) VALUES (
-                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
-                        )
-                        ON CONFLICT DO NOTHING
-                    `, [
-                        truncatedName,
-                        truncatedAddress, 
-                        truncatedCity,
-                        truncatedState,
-                        'United States',
-                        postalCode,
-                        truncatedPhone,
-                        truncatedWebsite,
-                        truncatedDomain,
-                        business.rating || null,
-                        truncatedCategory,
-                        truncatedCategory,
-                        new Date().toISOString(),
-                        taskId,
-                        notes
+                        processedBusiness.notes
                     ]);
                     
                     savedCount++;
-                    logger.debug(`Saved business: ${truncatedName} (${truncatedAddress}) ${truncatedPhone || 'No phone'}`);
-                    
                 } catch (error) {
-                    logger.error(`Error saving business ${business.name}: ${error.message}`);
+                    logger.error(`Error saving business data: ${error.message}`);
                 }
             }
             
-            // Update the task status with the number of businesses found
-            await this.updateTaskStatus(taskId, 'running', businesses.length);
-            
+            logger.info(`Saved ${savedCount} businesses from ${location}`);
             return savedCount;
         } catch (error) {
-            logger.error(`Error in real Google Maps scraping for ${category}: ${error.message}`);
-            return 0;
+            logger.error(`Error in Google Maps scraping for ${category} in ${location}: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Process and sanitize raw business data
+     * @param {Object} business - Raw business data
+     * @param {string} city - City name
+     * @param {string} state - State name
+     * @param {string} category - Business category
+     * @param {string} taskId - Task ID
+     * @returns {Object} Processed business data
+     */
+    processBusinessData(business, city, state, category, taskId) {
+        try {
+            // Extract domain from website if available
+            let domain = null;
+            if (business.website) {
+                try {
+                    const urlObj = new URL(business.website);
+                    domain = urlObj.hostname.replace(/^www\./, '');
+                } catch (e) {
+                    logger.debug(`Could not parse URL: ${business.website}`);
+                }
+            }
+            
+            // Process postal code from address if present
+            let postalCode = null;
+            if (business.address) {
+                const postalMatch = business.address.match(/\b\d{5}(?:-\d{4})?\b/);
+                postalCode = postalMatch ? postalMatch[0] : null;
+            }
+            
+            // Add review count to the notes field for reference
+            const notes = business.reviewCount ? `Reviews: ${business.reviewCount}` : '';
+            
+            // Truncate any fields that might exceed their column length limits
+            return {
+                name: business.name ? business.name.substring(0, 250) : 'Unnamed Business',
+                address: business.address ? business.address.substring(0, 2000) : 'No address available',
+                city: city ? city.substring(0, 95) : '',
+                state: state ? state.substring(0, 95) : '',
+                postalCode: postalCode,
+                phone: business.phone ? business.phone.substring(0, 45) : null,
+                website: business.website ? business.website.substring(0, 250) : null,
+                domain: domain ? domain.substring(0, 250) : null,
+                rating: business.rating || null,
+                category: category ? category.substring(0, 250) : 'Uncategorized',
+                notes: notes
+            };
+        } catch (error) {
+            logger.error(`Error processing business data: ${error.message}`);
+            // Return a basic object if processing fails
+            return {
+                name: business.name || 'Unknown Business',
+                address: business.address || 'Unknown Address',
+                city: city,
+                state: state,
+                postalCode: null,
+                phone: null,
+                website: null,
+                domain: null,
+                rating: null,
+                category: category,
+                notes: 'Error processing data'
+            };
         }
     }
 
@@ -1537,16 +1557,19 @@ class ScraperService {
      */
     async startBatch(states = null, options = {}) {
         if (this.batchStatus?.isRunning) {
+            logger.warn('A batch operation is already running');
             throw new Error('A batch operation is already running');
         }
 
         try {
+            logger.info(`Starting batch for states: ${JSON.stringify(states)}`);
             await this.ensureBrowser();
 
             const batchId = options.batchId || uuidv4();
             const searchTerm = options.searchTerm || 'business';
             const wait = options.wait || 5000;
             const maxResults = options.maxResults || 100;
+            const taskList = options.taskList || [];
 
             // Use provided states or get all states from the database
             let statesArray = states;
@@ -1565,7 +1588,7 @@ class ScraperService {
                 INSERT INTO batch_operations
                 (id, start_time, status, total_tasks, states)
                 VALUES ($1, NOW(), $2, $3, $4)
-            `, [batchId, 'running', statesArray.length, JSON.stringify(statesArray)]);
+            `, [batchId, 'running', taskList.length || statesArray.length, JSON.stringify(statesArray)]);
 
             // Initialize batch status
             this.batchStatus = {
@@ -1574,7 +1597,7 @@ class ScraperService {
                 progress: 0,
                 completedTasks: 0,
                 failedTasks: 0,
-                totalTasks: statesArray.length,
+                totalTasks: taskList.length || statesArray.length,
                 currentState: null,
                 currentCity: null,
                 options: {
@@ -1582,21 +1605,25 @@ class ScraperService {
                     wait,
                     maxResults,
                     contactLimit: options.maxResults || maxResults
-                }
+                },
+                taskList
             };
+            
+            logger.info(`Batch ${batchId} initialized with ${this.batchStatus.totalTasks} tasks`);
 
             // Start batch processing in the background
             this.processBatch(batchId, statesArray, {
                 searchTerm,
                 wait,
-                maxResults
+                maxResults,
+                taskList
             }).catch(error => {
                 logger.error(`Background batch processing error: ${error.message}`);
             });
 
             return {
                 batchId,
-                totalTasks: statesArray.length
+                totalTasks: this.batchStatus.totalTasks
             };
         } catch (error) {
             logger.error(`Error starting batch: ${error.message}`);
@@ -1612,6 +1639,7 @@ class ScraperService {
      */
     async processBatch(batchId, states, options) {
         try {
+            // Process each state
             for (const state of states) {
                 if (!this.batchStatus?.isRunning) {
                     logger.info(`Batch ${batchId} was stopped`);
@@ -1619,54 +1647,108 @@ class ScraperService {
                 }
 
                 this.batchStatus.currentState = state;
-
-                // Create a task for each state
-                try {
-                    const taskId = uuidv4();
-                    const searchTerm = `${options.searchTerm} in ${state}`;
-
-                    // Create task entry in database
-                    await db.query(`
-                        INSERT INTO scraping_tasks
-                        (id, search_term, status, created_at)
-                        VALUES ($1, $2, $3, NOW())
-                    `, [taskId, searchTerm, 'pending']);
-
-                    // Process the state
-                    this.batchStatus.currentCity = state;
-
-                    // In real implementation, this would call the scraper to process the state
-                    logger.info(`Batch ${batchId}: Processing state ${state} - awaiting real scraper`);
-
-                    // Simulate processing delay
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-
-                    // Update completed tasks
-                    this.batchStatus.completedTasks += 1;
-                    this.batchStatus.progress = (this.batchStatus.completedTasks / this.batchStatus.totalTasks) * 100;
-
-                    // Update task status
-                    await db.query(`
-                        UPDATE scraping_tasks
-                        SET status = 'completed', completed_at = NOW()
-                        WHERE id = $1
-                    `, [taskId]);
-
-                    // Wait between states
-                    if (this.batchStatus?.isRunning) {
-                        await new Promise(resolve => setTimeout(resolve, options.wait || 5000));
+                
+                // Process cities for this state
+                const taskList = options.taskList ? options.taskList.filter(task => task.state === state) : [];
+                
+                if (taskList.length === 0) {
+                    logger.info(`No cities found for state ${state}, skipping...`);
+                    continue;
+                }
+                
+                // Create state progress entry
+                await db.query(`
+                    INSERT INTO batch_state_progress
+                    (batch_id, state, total_cities, completed_cities, failed_cities, last_updated)
+                    VALUES ($1, $2, $3, $4, $5, NOW())
+                    ON CONFLICT (batch_id, state) 
+                    DO UPDATE SET
+                      total_cities = $3,
+                      last_updated = NOW()
+                `, [
+                    batchId,
+                    state,
+                    taskList.length,
+                    0,
+                    0
+                ]);
+                
+                // Process each city in the state
+                for (const task of taskList) {
+                    if (!this.batchStatus?.isRunning) {
+                        break;
                     }
-                } catch (error) {
-                    logger.error(`Error processing state ${state}: ${error.message}`);
-                    this.batchStatus.failedTasks += 1;
-                    this.batchStatus.progress = ((this.batchStatus.completedTasks + this.batchStatus.failedTasks) / this.batchStatus.totalTasks) * 100;
+                    
+                    const { city, searchTerm } = task;
+                    this.batchStatus.currentCity = city;
+                    
+                    try {
+                        // Create a task ID for this city
+                        const taskId = uuidv4();
+                        logger.info(`Processing city task: ${searchTerm} with ID ${taskId}`);
+                        
+                        // Create task entry in database
+                        await db.query(`
+                            INSERT INTO scraping_tasks
+                            (id, search_term, status, created_at, location, params)
+                            VALUES ($1, $2, $3, NOW(), $4, $5)
+                        `, [
+                            taskId, 
+                            searchTerm, 
+                            'running',
+                            `${city}, ${state}`,
+                            JSON.stringify({ batchId, state, city })
+                        ]);
+                        
+                        // PERFORM ACTUAL SCRAPING HERE
+                        logger.info(`Actually scraping Google Maps for: ${searchTerm}`);
+                        const businesses = await this.scrapeBusinessesFromGoogleMaps(taskId, options.searchTerm || 'Digital Marketing Agency', `${city}, ${state}`);
+                        
+                        // Mark task as completed and update counts
+                        await db.query(`
+                            UPDATE scraping_tasks
+                            SET status = 'completed', completed_at = NOW(), businesses_found = $1
+                            WHERE id = $2
+                        `, [businesses || 0, taskId]);
+                        
+                        // Update batch progress
+                        this.batchStatus.completedTasks += 1;
+                        this.batchStatus.progress = (this.batchStatus.completedTasks / this.batchStatus.totalTasks) * 100;
+                        
+                        // Update state progress
+                        await db.query(`
+                            UPDATE batch_state_progress
+                            SET completed_cities = completed_cities + 1, last_updated = NOW()
+                            WHERE batch_id = $1 AND state = $2
+                        `, [batchId, state]);
+                        
+                        logger.info(`Completed city scraping: ${city}, ${state} - found ${businesses || 0} businesses`);
+                        
+                        // Wait between cities to avoid rate limiting
+                        if (this.batchStatus?.isRunning) {
+                            const waitTime = options.wait || 5000;
+                            logger.info(`Waiting ${waitTime/1000} seconds before next city...`);
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
+                        }
+                    } catch (error) {
+                        logger.error(`Error processing city ${city} in state ${state}: ${error.message}`);
+                        this.batchStatus.failedTasks += 1;
+                        this.batchStatus.progress = ((this.batchStatus.completedTasks + this.batchStatus.failedTasks) / this.batchStatus.totalTasks) * 100;
+                        
+                        // Update state progress for failures
+                        await db.query(`
+                            UPDATE batch_state_progress
+                            SET failed_cities = failed_cities + 1, last_updated = NOW()
+                            WHERE batch_id = $1 AND state = $2
+                        `, [batchId, state]);
 
-                    // Log failure
-                    await db.query(`
-                        INSERT INTO batch_task_failures
-                        (batch_id, state, error_message, failure_time)
-                        VALUES ($1, $2, $3, NOW())
-                    `, [batchId, state, error.message]);
+                        // Log failure
+                        await db.query(`
+                            INSERT INTO batch_task_failures
+                            (batch_id, state, city, error_message, failure_time)
+                            VALUES ($1, $2, $3, $4, NOW())
+                        `, [batchId, state, city, error.message]);
+                    }
                 }
             }
 

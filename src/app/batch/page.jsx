@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Header from '@/components/layout/Header';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
 
 export default function BatchPage() {
     const [batches, setBatches] = useState([]);
@@ -18,29 +19,206 @@ export default function BatchPage() {
     const [selectedStateIndex, setSelectedStateIndex] = useState(-1);
     const [refreshInterval, setRefreshInterval] = useState(null);
     const [batchProgress, setBatchProgress] = useState(0);
+    const [availableStates, setAvailableStates] = useState([]);
+    const [stateDetails, setStateDetails] = useState({});
+    const [showCities, setShowCities] = useState(false);
+    const [databaseError, setDatabaseError] = useState(null);
+    const [isSettingUpDatabase, setIsSettingUpDatabase] = useState(false);
+    const [citiesLoaded, setCitiesLoaded] = useState(true);
+    const [isPopulatingCities, setIsPopulatingCities] = useState(false);
+    const router = useRouter();
 
-    // List of US states
+    // List of US states with their 2-letter codes
     const statesList = [
-        'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-        'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-        'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+        {code: 'AL', name: 'Alabama'},
+        {code: 'AK', name: 'Alaska'},
+        {code: 'AZ', name: 'Arizona'},
+        {code: 'AR', name: 'Arkansas'},
+        {code: 'CA', name: 'California'},
+        {code: 'CO', name: 'Colorado'},
+        {code: 'CT', name: 'Connecticut'},
+        {code: 'DE', name: 'Delaware'},
+        {code: 'FL', name: 'Florida'},
+        {code: 'GA', name: 'Georgia'},
+        {code: 'HI', name: 'Hawaii'},
+        {code: 'ID', name: 'Idaho'},
+        {code: 'IL', name: 'Illinois'},
+        {code: 'IN', name: 'Indiana'},
+        {code: 'IA', name: 'Iowa'},
+        {code: 'KS', name: 'Kansas'},
+        {code: 'KY', name: 'Kentucky'},
+        {code: 'LA', name: 'Louisiana'},
+        {code: 'ME', name: 'Maine'},
+        {code: 'MD', name: 'Maryland'},
+        {code: 'MA', name: 'Massachusetts'},
+        {code: 'MI', name: 'Michigan'},
+        {code: 'MN', name: 'Minnesota'},
+        {code: 'MS', name: 'Mississippi'},
+        {code: 'MO', name: 'Missouri'},
+        {code: 'MT', name: 'Montana'},
+        {code: 'NE', name: 'Nebraska'},
+        {code: 'NV', name: 'Nevada'},
+        {code: 'NH', name: 'New Hampshire'},
+        {code: 'NJ', name: 'New Jersey'},
+        {code: 'NM', name: 'New Mexico'},
+        {code: 'NY', name: 'New York'},
+        {code: 'NC', name: 'North Carolina'},
+        {code: 'ND', name: 'North Dakota'},
+        {code: 'OH', name: 'Ohio'},
+        {code: 'OK', name: 'Oklahoma'},
+        {code: 'OR', name: 'Oregon'},
+        {code: 'PA', name: 'Pennsylvania'},
+        {code: 'RI', name: 'Rhode Island'},
+        {code: 'SC', name: 'South Carolina'},
+        {code: 'SD', name: 'South Dakota'},
+        {code: 'TN', name: 'Tennessee'},
+        {code: 'TX', name: 'Texas'},
+        {code: 'UT', name: 'Utah'},
+        {code: 'VT', name: 'Vermont'},
+        {code: 'VA', name: 'Virginia'},
+        {code: 'WA', name: 'Washington'},
+        {code: 'WV', name: 'West Virginia'},
+        {code: 'WI', name: 'Wisconsin'},
+        {code: 'WY', name: 'Wyoming'}
     ];
 
     useEffect(() => {
+        // Initialize system, fetch batches, and check for active batch
+        initializeSystem();
         fetchBatches();
-        fetchStates();
-
-        // Check if there's an active batch running
+        setAvailableStates(statesList);
+        fetchStateDetails();
         checkActiveBatch();
 
+        // Clean up interval on component unmount
         return () => {
             if (refreshInterval) {
                 clearInterval(refreshInterval);
             }
         };
     }, []);
+
+    const initializeSystem = async () => {
+        try {
+            setLoading(true);
+            
+            // Use the API to check database status instead of direct db access
+            const dbResponse = await fetch('/api/database/status');
+            
+            if (!dbResponse.ok) {
+                throw new Error('Database connection failed');
+            }
+            
+            // Then check if city data is loaded
+            const citiesResponse = await fetch('/api/batch/states');
+            
+            if (citiesResponse.ok) {
+                const data = await citiesResponse.json();
+                setStateDetails(data);
+                
+                // Check if we have city data
+                const anyState = Object.keys(data)[0];
+                if (anyState && (!data[anyState]?.cities || data[anyState].cities.length === 0)) {
+                    setCitiesLoaded(false);
+                }
+            } else {
+                // If API fails, create database tables
+                await setupDatabase();
+            }
+        } catch (error) {
+            console.error('System initialization error:', error);
+            setDatabaseError('System initialization failed. Try using the Setup Database button.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const setupDatabase = async () => {
+        try {
+            setIsSettingUpDatabase(true);
+            
+            // Create an API route to setup database tables
+            const response = await fetch('/api/database/setup');
+            
+            if (response.ok) {
+                const result = await response.json();
+                
+                if (result.success) {
+                    setDatabaseError(null);
+                    // Now check if city data exists
+                    await populateCityData();
+                    // Reload page data
+                    fetchBatches();
+                    fetchStateDetails();
+                    alert("Database setup completed successfully!");
+                } else {
+                    setDatabaseError(`Setup completed with errors: ${result.errors.join(', ')}`);
+                }
+            } else {
+                const error = await response.text();
+                setDatabaseError(`Database setup failed: ${error}`);
+            }
+        } catch (error) {
+            setDatabaseError(`Error setting up database: ${error.message}`);
+        } finally {
+            setIsSettingUpDatabase(false);
+        }
+    };
+
+    const fetchStateDetails = async () => {
+        try {
+            const response = await fetch('/api/batch/states');
+            
+            if (response.ok) {
+                const data = await response.json();
+                setStateDetails(data);
+                
+                // Check if we have city data
+                const anyState = Object.keys(data)[0];
+                if (anyState && (!data[anyState]?.cities || data[anyState].cities.length === 0)) {
+                    setCitiesLoaded(false);
+                } else {
+                    setCitiesLoaded(true);
+                }
+            } else {
+                // Handle database structure errors
+                const error = await response.text();
+                if (error.includes('does not exist')) {
+                    setDatabaseError('Database tables missing. Click "Setup Database" to fix.');
+                }
+                setCitiesLoaded(false);
+            }
+        } catch (error) {
+            console.error('Error fetching state details:', error);
+            if (error.message?.includes('does not exist')) {
+                setDatabaseError('Database tables missing. Click "Setup Database" to fix.');
+            }
+            setCitiesLoaded(false);
+        }
+    };
+
+    const populateCityData = async () => {
+        try {
+            setIsPopulatingCities(true);
+            const response = await fetch('/api/batch/states/populate');
+            
+            if (response.ok) {
+                const result = await response.json();
+                alert(`Successfully populated city data: ${result.count} cities added.`);
+                setCitiesLoaded(true);
+                
+                // Refresh state details
+                fetchStateDetails();
+            } else {
+                alert('Failed to populate city data.');
+            }
+        } catch (error) {
+            console.error('Error populating city data:', error);
+            alert(`Error populating city data: ${error.message}`);
+        } finally {
+            setIsPopulatingCities(false);
+        }
+    };
 
     const fetchBatches = async () => {
         try {
@@ -49,30 +227,22 @@ export default function BatchPage() {
 
             if (response.ok) {
                 const data = await response.json();
-                setBatches(data);
+                setBatches(data || []);
+                
+                // Check for any running batch
+                const runningBatch = data?.find(batch => batch.status === 'running');
+                if (runningBatch) {
+                    setIsRunning(true);
+                    setActiveBatch(runningBatch);
+                    startPolling(runningBatch.id);
+                }
+            } else {
+                console.error('Failed to fetch batches');
             }
         } catch (error) {
             console.error('Error fetching batches:', error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const fetchStates = async () => {
-        try {
-            const response = await fetch('/api/stats');
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.states && data.states.length > 0) {
-                    setStateOptions(data.states);
-                } else {
-                    setStateOptions(statesList);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching states:', error);
-            setStateOptions(statesList);
         }
     };
 
@@ -82,13 +252,13 @@ export default function BatchPage() {
 
             if (response.ok) {
                 const data = await response.json();
-
-                // Find any running batch
-                const runningBatch = data.find(batch => batch.status === 'running');
-
+                
+                // Check for active batch
+                const runningBatch = data?.find(batch => batch.status === 'running');
+                
                 if (runningBatch) {
-                    await getBatchStatus(runningBatch.id);
                     setIsRunning(true);
+                    setActiveBatch(runningBatch);
                     startPolling(runningBatch.id);
                 }
             }
@@ -104,17 +274,18 @@ export default function BatchPage() {
             if (response.ok) {
                 const data = await response.json();
                 setActiveBatch(data);
-
-                if (data.totalTasks > 0) {
-                    const progress = ((data.completedTasks + data.failedTasks) / data.totalTasks) * 100;
+                
+                // Calculate progress
+                if (data.total_tasks > 0) {
+                    const progress = ((data.completed_tasks + data.failed_tasks) / data.total_tasks) * 100;
                     setBatchProgress(progress);
                 }
-
-                // If the batch is no longer running, stop polling
-                if (data.status !== 'running') {
+                
+                // Stop polling if batch is complete or stopped
+                if (['completed', 'failed', 'stopped'].includes(data.status)) {
                     setIsRunning(false);
                     stopPolling();
-                    await fetchBatches();
+                    fetchBatches(); // Refresh list of batches
                 }
             }
         } catch (error) {
@@ -143,7 +314,7 @@ export default function BatchPage() {
 
     const addState = () => {
         if (selectedStateIndex >= 0) {
-            const stateToAdd = stateOptions[selectedStateIndex];
+            const stateToAdd = availableStates[selectedStateIndex].code;
             if (!selectedStates.includes(stateToAdd)) {
                 setSelectedStates([...selectedStates, stateToAdd]);
             }
@@ -156,7 +327,7 @@ export default function BatchPage() {
     };
 
     const selectAllStates = () => {
-        setSelectedStates([...stateOptions]);
+        setSelectedStates(availableStates.map(state => state.code));
     };
 
     const clearAllStates = () => {
@@ -169,8 +340,18 @@ export default function BatchPage() {
             return;
         }
 
+        if (selectedStates.length === 0) {
+            alert('Please select at least one state');
+            return;
+        }
+
         try {
             setIsStarting(true);
+
+            // Log request details for debugging purposes
+            console.log(`Starting batch with search term: ${searchTerm}`);
+            console.log(`Selected states: ${selectedStates.join(', ')}`);
+            console.log(`Wait time: ${waitTime} seconds, Max results: ${maxResults}`);
 
             const response = await fetch('/api/batch', {
                 method: 'POST',
@@ -179,14 +360,23 @@ export default function BatchPage() {
                 },
                 body: JSON.stringify({
                     searchTerm,
-                    states: selectedStates.length > 0 ? selectedStates : null,
-                    wait: waitTime * 1000, // Convert to milliseconds
-                    maxResults
+                    states: selectedStates,
+                    wait: waitTime * 1000,
+                    maxResults,
+                    topCitiesPerState: 10 // Always use top 10 cities per state
                 })
             });
 
             if (!response.ok) {
-                throw new Error('Failed to start batch');
+                // Try to get error details from the response
+                let errorMessage;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorData.details || `Error ${response.status}: ${response.statusText}`;
+                } catch {
+                    errorMessage = `Error ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
@@ -195,13 +385,16 @@ export default function BatchPage() {
             setActiveBatch({
                 id: data.batchId,
                 status: 'running',
-                totalTasks: data.totalTasks,
+                totalTasks: data.totalTasks || selectedStates.length * 10,
                 completedTasks: 0,
-                failedTasks: 0
+                failedTasks: 0,
+                searchTerm
             });
 
             setBatchProgress(0);
             startPolling(data.batchId);
+            
+            console.log("Batch started successfully:", data);
         } catch (error) {
             console.error('Error starting batch:', error);
             alert(`Error starting batch: ${error.message}`);
@@ -216,23 +409,23 @@ export default function BatchPage() {
         }
 
         try {
-            const response = await fetch('/api/batch', {
-                method: 'DELETE'
+            const response = await fetch('/api/batch', { 
+                method: 'DELETE' 
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to stop batch');
+            if (response.ok) {
+                stopPolling();
+                setIsRunning(false);
+                fetchBatches();
+            } else {
+                alert('Failed to stop batch');
             }
-
-            setIsRunning(false);
-            stopPolling();
-            await fetchBatches();
         } catch (error) {
             console.error('Error stopping batch:', error);
-            alert(`Error stopping batch: ${error.message}`);
         }
     };
 
+    // Render the page UI
     return (
         <div className="flex h-screen bg-background overflow-hidden">
             <Sidebar />
@@ -242,8 +435,8 @@ export default function BatchPage() {
                     <div className="max-w-7xl mx-auto">
                         <div className="flex flex-col md:flex-row items-center justify-between mb-8">
                             <div>
-                                <h1 className="text-3xl font-bold mb-1">Batch Processing</h1>
-                                <p className="text-gray-500">Process multiple scraping tasks across states or regions</p>
+                                <h1 className="text-3xl font-bold mb-1">State-Based Batch Scraping</h1>
+                                <p className="text-gray-500">Search for businesses in the top 10 cities of each selected state</p>
                             </div>
 
                             {isRunning && (
@@ -256,6 +449,60 @@ export default function BatchPage() {
                                 </button>
                             )}
                         </div>
+
+                        {databaseError && (
+                            <div className="card p-6 mb-6 bg-error-light border-2 border-error">
+                                <h2 className="text-xl font-semibold mb-3 text-error flex items-center">
+                                    <span className="material-icons mr-2">warning</span>
+                                    Database Setup Required
+                                </h2>
+                                <p className="mb-4">{databaseError}</p>
+                                <button
+                                    onClick={setupDatabase}
+                                    disabled={isSettingUpDatabase}
+                                    className="btn btn-primary"
+                                >
+                                    {isSettingUpDatabase ? (
+                                        <>
+                                            <span className="animate-spin material-icons mr-2">refresh</span>
+                                            Setting Up Database...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-icons mr-2">build</span>
+                                            Setup Database
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+
+                        {!citiesLoaded && !databaseError && (
+                            <div className="card p-6 mb-6 bg-warning-light border-2 border-warning">
+                                <h2 className="text-xl font-semibold mb-3 text-warning flex items-center">
+                                    <span className="material-icons mr-2">info</span>
+                                    City Data Required
+                                </h2>
+                                <p className="mb-4">The city data needs to be populated before you can use state-based searching.</p>
+                                <button
+                                    onClick={populateCityData}
+                                    disabled={isPopulatingCities}
+                                    className="btn btn-primary"
+                                >
+                                    {isPopulatingCities ? (
+                                        <>
+                                            <span className="animate-spin material-icons mr-2">refresh</span>
+                                            Populating City Data...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-icons mr-2">map</span>
+                                            Populate City Data
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        )}
 
                         {isRunning && activeBatch ? (
                             <div className="card p-6 mb-6">
@@ -301,7 +548,7 @@ export default function BatchPage() {
 
                                 {activeBatch.currentState && activeBatch.currentCity && (
                                     <div className="text-center py-3 px-4 bg-accent rounded-md">
-                                        <p>Currently processing: <strong>{activeBatch.currentCity}, {activeBatch.currentState}</strong></p>
+                                        <p>Currently processing: <strong>{activeBatch.searchTerm} in {activeBatch.currentCity}, {activeBatch.currentState}</strong></p>
                                     </div>
                                 )}
                             </div>
@@ -309,7 +556,7 @@ export default function BatchPage() {
                             <div className="card p-6 mb-6">
                                 <h2 className="text-xl font-semibold mb-5 flex items-center">
                                     <span className="material-icons mr-3 text-primary">batch_prediction</span>
-                                    Create Batch Process
+                                    Create State-Based Batch
                                 </h2>
 
                                 <div className="space-y-6">
@@ -322,7 +569,7 @@ export default function BatchPage() {
                                             value={searchTerm}
                                             onChange={e => setSearchTerm(e.target.value)}
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">This term will be used for all searches in the batch</p>
+                                        <p className="text-xs text-gray-500 mt-1">This keyword will be searched in the top 10 cities of each selected state</p>
                                     </div>
 
                                     <div>
@@ -335,8 +582,10 @@ export default function BatchPage() {
                                                 onChange={e => setSelectedStateIndex(parseInt(e.target.value))}
                                             >
                                                 <option value="-1">Select a state...</option>
-                                                {stateOptions.map((state, index) => (
-                                                    <option key={state} value={index}>{state}</option>
+                                                {availableStates.map((state, index) => (
+                                                    <option key={state.code} value={index}>
+                                                        {state.name} ({state.code})
+                                                    </option>
                                                 ))}
                                             </select>
 
@@ -350,20 +599,23 @@ export default function BatchPage() {
                                         </div>
 
                                         <div className="flex flex-wrap gap-2 mb-3">
-                                            {selectedStates.map(state => (
-                                                <div key={state} className="bg-secondary-light text-secondary px-3 py-1.5 rounded-full text-sm flex items-center">
-                                                    <span>{state}</span>
-                                                    <button
-                                                        className="ml-2"
-                                                        onClick={() => removeState(state)}
-                                                    >
-                                                        <span className="material-icons text-xs">close</span>
-                                                    </button>
-                                                </div>
-                                            ))}
+                                            {selectedStates.map(stateCode => {
+                                                const stateName = statesList.find(s => s.code === stateCode)?.name || stateCode;
+                                                return (
+                                                    <div key={stateCode} className="bg-secondary-light text-secondary px-3 py-1.5 rounded-full text-sm flex items-center">
+                                                        <span>{stateName} ({stateCode})</span>
+                                                        <button
+                                                            className="ml-2"
+                                                            onClick={() => removeState(stateCode)}
+                                                        >
+                                                            <span className="material-icons text-xs">close</span>
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
 
                                             {selectedStates.length === 0 && (
-                                                <div className="text-sm text-gray-500">No states selected. If none are selected, all states will be processed.</div>
+                                                <div className="text-sm text-gray-500">Select states to process. At least one state is required.</div>
                                             )}
                                         </div>
 
@@ -380,7 +632,35 @@ export default function BatchPage() {
                                             >
                                                 Clear All
                                             </button>
+                                            <button
+                                                onClick={() => setShowCities(!showCities)}
+                                                className="text-sm text-primary hover:underline ml-auto"
+                                            >
+                                                {showCities ? 'Hide City List' : 'Show City List'}
+                                            </button>
                                         </div>
+                                        
+                                        {/* City list preview */}
+                                        {showCities && selectedStates.length > 0 && (
+                                            <div className="mt-4 p-4 border border-dashed border-light rounded-md">
+                                                <h3 className="text-sm font-semibold mb-2">Top 10 Cities to Process:</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {selectedStates.map(stateCode => {
+                                                        const stateName = statesList.find(s => s.code === stateCode)?.name || stateCode;
+                                                        return (
+                                                            <div key={stateCode} className="mb-3">
+                                                                <div className="font-medium text-sm">{stateName} ({stateCode})</div>
+                                                                <ol className="list-decimal text-xs text-gray-600 pl-5 pt-1">
+                                                                    {stateDetails[stateCode]?.cities?.slice(0, 10).map(city => (
+                                                                        <li key={city}>{city}</li>
+                                                                    ))}
+                                                                </ol>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -419,7 +699,7 @@ export default function BatchPage() {
                                     <div className="pt-6 border-t border-light">
                                         <button
                                             onClick={startBatch}
-                                            disabled={isStarting || !searchTerm}
+                                            disabled={isStarting || !searchTerm || selectedStates.length === 0 || !citiesLoaded || databaseError}
                                             className="btn btn-primary px-6 py-3 shadow-md hover:shadow-lg"
                                         >
                                             {isStarting ? (
@@ -436,7 +716,7 @@ export default function BatchPage() {
                                         </button>
                                         <p className="text-sm text-gray-500 mt-4">
                                             <span className="material-icons text-xs text-warning align-middle mr-1">warning</span>
-                                            Batch processing may take a long time depending on the number of states selected
+                                            This will search for businesses in the 10 most populated cities of each selected state
                                         </p>
                                     </div>
                                 </div>
@@ -461,6 +741,7 @@ export default function BatchPage() {
                                         <thead>
                                             <tr>
                                                 <th className="px-4 py-3 bg-accent text-left font-semibold">ID</th>
+                                                <th className="px-4 py-3 bg-accent text-left font-semibold">Search Term</th>
                                                 <th className="px-4 py-3 bg-accent text-left font-semibold">Start Time</th>
                                                 <th className="px-4 py-3 bg-accent text-left font-semibold">End Time</th>
                                                 <th className="px-4 py-3 bg-accent text-left font-semibold">Tasks</th>
@@ -471,6 +752,7 @@ export default function BatchPage() {
                                             {batches.map(batch => (
                                                 <tr key={batch.id} className="hover:bg-accent transition">
                                                     <td className="px-4 py-3.5 font-medium text-primary">{batch.id.substring(0, 8)}...</td>
+                                                    <td className="px-4 py-3.5">{batch.searchTerm || "Unknown"}</td>
                                                     <td className="px-4 py-3.5">{new Date(batch.start_time).toLocaleString()}</td>
                                                     <td className="px-4 py-3.5">
                                                         {batch.end_time
@@ -479,7 +761,7 @@ export default function BatchPage() {
                                                         }
                                                     </td>
                                                     <td className="px-4 py-3.5">
-                                                        {batch.completed_tasks + batch.failed_tasks}/{batch.total_tasks}
+                                                        {(batch.completed_tasks || 0) + (batch.failed_tasks || 0)}/{batch.total_tasks || 0}
                                                     </td>
                                                     <td className="px-4 py-3.5">
                                                         <StatusBadge status={batch.status} />

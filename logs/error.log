@@ -15658,3 +15658,410 @@ Call log:
 [2025-04-10T22:40:27.923Z] [ERROR] Error estimating export: Cannot read properties of null (reading 'category')
 [2025-04-10T22:40:34.070Z] [ERROR] Error estimating export: Cannot read properties of null (reading 'category')
 [2025-04-10T22:40:35.306Z] [ERROR] Error estimating export: Cannot read properties of undefined (reading 'category')
+[2025-04-11T03:09:33.903Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:33.903Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:34.808Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:34.809Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:34.856Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:34.856Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:35.796Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:35.796Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:36.221Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:36.221Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:36.764Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:36.765Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:37.750Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:37.750Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:56.473Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:56.473Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:09:57.955Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:09:57.955Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:10:56.447Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:10:56.447Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:10:57.855Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:10:57.855Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:11:56.573Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:11:56.573Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:11:58.149Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:11:58.149Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:12:56.523Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:12:56.523Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:12:57.917Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:12:57.918Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:13:56.914Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:13:56.919Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:13:58.350Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:13:58.350Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:14:56.466Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:14:56.466Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:14:57.886Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:14:57.886Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:15:56.472Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:15:56.472Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:15:57.877Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:15:57.877Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:16:22.072Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:16:22.072Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:16:23.454Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:16:23.455Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:16:24.856Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:16:24.856Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:16:26.139Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:16:26.139Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:16:56.431Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:16:56.432Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:16:57.856Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:16:57.857Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:21.861Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:21.862Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:21.961Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:21.962Z] [ERROR] Error getting top cities for AL: relation "city_data" does not exist
+[2025-04-11T03:17:22.809Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:22.809Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:22.885Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:22.886Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:22.893Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:22.893Z] [ERROR] Error getting top cities for AK: relation "city_data" does not exist
+[2025-04-11T03:17:23.754Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:23.754Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:23.846Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:23.846Z] [ERROR] Error getting top cities for AZ: relation "city_data" does not exist
+[2025-04-11T03:17:24.278Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:24.279Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:24.725Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:24.725Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:24.804Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:24.804Z] [ERROR] Error getting top cities for AR: relation "city_data" does not exist
+[2025-04-11T03:17:25.665Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:25.666Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:25.770Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:25.770Z] [ERROR] Error getting top cities for CA: relation "city_data" does not exist
+[2025-04-11T03:17:26.724Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:26.724Z] [ERROR] Error getting top cities for CO: relation "city_data" does not exist
+[2025-04-11T03:17:27.702Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:27.702Z] [ERROR] Error getting top cities for CT: relation "city_data" does not exist
+[2025-04-11T03:17:28.645Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:28.645Z] [ERROR] Error getting top cities for DE: relation "city_data" does not exist
+[2025-04-11T03:17:29.600Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:29.601Z] [ERROR] Error getting top cities for FL: relation "city_data" does not exist
+[2025-04-11T03:17:30.551Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:30.551Z] [ERROR] Error getting top cities for GA: relation "city_data" does not exist
+[2025-04-11T03:17:31.469Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:31.469Z] [ERROR] Error getting top cities for HI: relation "city_data" does not exist
+[2025-04-11T03:17:32.321Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:32.321Z] [ERROR] Error getting top cities for ID: relation "city_data" does not exist
+[2025-04-11T03:17:33.255Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:33.255Z] [ERROR] Error getting top cities for IL: relation "city_data" does not exist
+[2025-04-11T03:17:34.206Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:34.206Z] [ERROR] Error getting top cities for IN: relation "city_data" does not exist
+[2025-04-11T03:17:35.066Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:35.066Z] [ERROR] Error getting top cities for IA: relation "city_data" does not exist
+[2025-04-11T03:17:36.017Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:36.017Z] [ERROR] Error getting top cities for KS: relation "city_data" does not exist
+[2025-04-11T03:17:37.013Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:37.013Z] [ERROR] Error getting top cities for KY: relation "city_data" does not exist
+[2025-04-11T03:17:37.941Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:37.941Z] [ERROR] Error getting top cities for LA: relation "city_data" does not exist
+[2025-04-11T03:17:38.870Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:38.870Z] [ERROR] Error getting top cities for ME: relation "city_data" does not exist
+[2025-04-11T03:17:39.808Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:39.808Z] [ERROR] Error getting top cities for MD: relation "city_data" does not exist
+[2025-04-11T03:17:40.674Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:40.674Z] [ERROR] Error getting top cities for AL: relation "city_data" does not exist
+[2025-04-11T03:17:40.739Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:40.739Z] [ERROR] Error getting top cities for MA: relation "city_data" does not exist
+[2025-04-11T03:17:41.620Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:41.620Z] [ERROR] Error getting top cities for AK: relation "city_data" does not exist
+[2025-04-11T03:17:41.704Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:41.704Z] [ERROR] Error getting top cities for MI: relation "city_data" does not exist
+[2025-04-11T03:17:42.494Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:42.495Z] [ERROR] Error getting top cities for AZ: relation "city_data" does not exist
+[2025-04-11T03:17:42.648Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:42.648Z] [ERROR] Error getting top cities for MN: relation "city_data" does not exist
+[2025-04-11T03:17:43.439Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:43.439Z] [ERROR] Error getting top cities for AR: relation "city_data" does not exist
+[2025-04-11T03:17:43.570Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:43.570Z] [ERROR] Error getting top cities for MS: relation "city_data" does not exist
+[2025-04-11T03:17:44.368Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:44.368Z] [ERROR] Error getting top cities for CA: relation "city_data" does not exist
+[2025-04-11T03:17:44.433Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:44.434Z] [ERROR] Error getting top cities for MO: relation "city_data" does not exist
+[2025-04-11T03:17:45.303Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:45.303Z] [ERROR] Error getting top cities for CO: relation "city_data" does not exist
+[2025-04-11T03:17:45.415Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:45.415Z] [ERROR] Error getting top cities for MT: relation "city_data" does not exist
+[2025-04-11T03:17:46.161Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:46.161Z] [ERROR] Error getting top cities for CT: relation "city_data" does not exist
+[2025-04-11T03:17:46.384Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:46.384Z] [ERROR] Error getting top cities for NE: relation "city_data" does not exist
+[2025-04-11T03:17:47.309Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:47.309Z] [ERROR] Error getting top cities for DE: relation "city_data" does not exist
+[2025-04-11T03:17:47.327Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:47.327Z] [ERROR] Error getting top cities for NV: relation "city_data" does not exist
+[2025-04-11T03:17:48.305Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:48.305Z] [ERROR] Error getting top cities for FL: relation "city_data" does not exist
+[2025-04-11T03:17:48.314Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:48.314Z] [ERROR] Error getting top cities for NH: relation "city_data" does not exist
+[2025-04-11T03:17:49.327Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:49.327Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:49.459Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:49.459Z] [ERROR] Error getting top cities for NJ: relation "city_data" does not exist
+[2025-04-11T03:17:49.513Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:49.514Z] [ERROR] Error getting top cities for GA: relation "city_data" does not exist
+[2025-04-11T03:17:49.566Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:49.567Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:49.629Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:49.629Z] [ERROR] Error getting top cities for AL: relation "city_data" does not exist
+[2025-04-11T03:17:50.337Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:50.337Z] [ERROR] Error getting top cities for NM: relation "city_data" does not exist
+[2025-04-11T03:17:50.558Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:50.558Z] [ERROR] Error getting top cities for HI: relation "city_data" does not exist
+[2025-04-11T03:17:50.615Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:50.616Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:50.716Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:50.716Z] [ERROR] Error getting top cities for AK: relation "city_data" does not exist
+[2025-04-11T03:17:51.305Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:51.305Z] [ERROR] Error getting top cities for NY: relation "city_data" does not exist
+[2025-04-11T03:17:51.485Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:51.485Z] [ERROR] Error getting top cities for ID: relation "city_data" does not exist
+[2025-04-11T03:17:51.580Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:51.580Z] [ERROR] Error getting top cities for AZ: relation "city_data" does not exist
+[2025-04-11T03:17:51.583Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:51.583Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:52.203Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:52.203Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:52.209Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:52.209Z] [ERROR] Error getting top cities for AL: relation "city_data" does not exist
+[2025-04-11T03:17:52.303Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:52.304Z] [ERROR] Error getting top cities for NC: relation "city_data" does not exist
+[2025-04-11T03:17:52.461Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:52.461Z] [ERROR] Error getting top cities for IL: relation "city_data" does not exist
+[2025-04-11T03:17:52.498Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:52.498Z] [ERROR] Error getting top cities for AR: relation "city_data" does not exist
+[2025-04-11T03:17:53.154Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:53.154Z] [ERROR] Error getting top cities for AK: relation "city_data" does not exist
+[2025-04-11T03:17:53.199Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:53.199Z] [ERROR] Error getting top cities for ND: relation "city_data" does not exist
+[2025-04-11T03:17:53.312Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:53.312Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:53.509Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:53.509Z] [ERROR] Error getting top cities for IN: relation "city_data" does not exist
+[2025-04-11T03:17:53.612Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:53.612Z] [ERROR] Error getting top cities for CA: relation "city_data" does not exist
+[2025-04-11T03:17:54.173Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:54.173Z] [ERROR] Error getting top cities for AZ: relation "city_data" does not exist
+[2025-04-11T03:17:54.207Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:54.207Z] [ERROR] Error getting top cities for OH: relation "city_data" does not exist
+[2025-04-11T03:17:54.258Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:54.258Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:54.481Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:54.481Z] [ERROR] Error getting top cities for IA: relation "city_data" does not exist
+[2025-04-11T03:17:54.574Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:54.574Z] [ERROR] Error getting top cities for CO: relation "city_data" does not exist
+[2025-04-11T03:17:55.096Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:55.096Z] [ERROR] Error getting top cities for AR: relation "city_data" does not exist
+[2025-04-11T03:17:55.124Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:55.125Z] [ERROR] Error getting top cities for OK: relation "city_data" does not exist
+[2025-04-11T03:17:55.211Z] [ERROR] Database query error: column "task_id" does not exist
+[2025-04-11T03:17:55.211Z] [ERROR] Error getting batch status: column "task_id" does not exist
+[2025-04-11T03:17:55.475Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:55.475Z] [ERROR] Error getting top cities for KS: relation "city_data" does not exist
+[2025-04-11T03:17:55.553Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:55.553Z] [ERROR] Error getting top cities for CT: relation "city_data" does not exist
+[2025-04-11T03:17:56.074Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:56.075Z] [ERROR] Error getting top cities for OR: relation "city_data" does not exist
+[2025-04-11T03:17:56.114Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:56.114Z] [ERROR] Error getting top cities for CA: relation "city_data" does not exist
+[2025-04-11T03:17:56.507Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:56.508Z] [ERROR] Error getting top cities for KY: relation "city_data" does not exist
+[2025-04-11T03:17:56.622Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:56.622Z] [ERROR] Error getting top cities for DE: relation "city_data" does not exist
+[2025-04-11T03:17:57.111Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:57.111Z] [ERROR] Error getting top cities for CO: relation "city_data" does not exist
+[2025-04-11T03:17:57.209Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:57.210Z] [ERROR] Error getting top cities for PA: relation "city_data" does not exist
+[2025-04-11T03:17:57.659Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:57.659Z] [ERROR] Error getting top cities for LA: relation "city_data" does not exist
+[2025-04-11T03:17:57.818Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:57.818Z] [ERROR] Error getting top cities for FL: relation "city_data" does not exist
+[2025-04-11T03:17:58.071Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:58.071Z] [ERROR] Error getting top cities for CT: relation "city_data" does not exist
+[2025-04-11T03:17:58.172Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:58.173Z] [ERROR] Error getting top cities for RI: relation "city_data" does not exist
+[2025-04-11T03:17:58.600Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:58.600Z] [ERROR] Error getting top cities for ME: relation "city_data" does not exist
+[2025-04-11T03:17:58.810Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:58.810Z] [ERROR] Error getting top cities for GA: relation "city_data" does not exist
+[2025-04-11T03:17:59.110Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:59.110Z] [ERROR] Error getting top cities for DE: relation "city_data" does not exist
+[2025-04-11T03:17:59.259Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:59.259Z] [ERROR] Error getting top cities for SC: relation "city_data" does not exist
+[2025-04-11T03:17:59.558Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:59.559Z] [ERROR] Error getting top cities for MD: relation "city_data" does not exist
+[2025-04-11T03:17:59.804Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:17:59.804Z] [ERROR] Error getting top cities for HI: relation "city_data" does not exist
+[2025-04-11T03:18:00.052Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:00.052Z] [ERROR] Error getting top cities for FL: relation "city_data" does not exist
+[2025-04-11T03:18:00.215Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:00.215Z] [ERROR] Error getting top cities for SD: relation "city_data" does not exist
+[2025-04-11T03:18:00.533Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:00.533Z] [ERROR] Error getting top cities for MA: relation "city_data" does not exist
+[2025-04-11T03:18:00.763Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:00.763Z] [ERROR] Error getting top cities for ID: relation "city_data" does not exist
+[2025-04-11T03:18:01.000Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:01.000Z] [ERROR] Error getting top cities for GA: relation "city_data" does not exist
+[2025-04-11T03:18:01.156Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:01.156Z] [ERROR] Error getting top cities for TN: relation "city_data" does not exist
+[2025-04-11T03:18:01.495Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:01.495Z] [ERROR] Error getting top cities for MI: relation "city_data" does not exist
+[2025-04-11T03:18:01.711Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:01.711Z] [ERROR] Error getting top cities for IL: relation "city_data" does not exist
+[2025-04-11T03:18:01.934Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:01.934Z] [ERROR] Error getting top cities for HI: relation "city_data" does not exist
+[2025-04-11T03:18:02.130Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:02.131Z] [ERROR] Error getting top cities for TX: relation "city_data" does not exist
+[2025-04-11T03:18:02.465Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:02.465Z] [ERROR] Error getting top cities for MN: relation "city_data" does not exist
+[2025-04-11T03:18:02.579Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:02.580Z] [ERROR] Error getting top cities for IN: relation "city_data" does not exist
+[2025-04-11T03:18:02.887Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:02.887Z] [ERROR] Error getting top cities for ID: relation "city_data" does not exist
+[2025-04-11T03:18:03.069Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:03.069Z] [ERROR] Error getting top cities for UT: relation "city_data" does not exist
+[2025-04-11T03:18:03.414Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:03.414Z] [ERROR] Error getting top cities for MS: relation "city_data" does not exist
+[2025-04-11T03:18:03.529Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:03.529Z] [ERROR] Error getting top cities for IA: relation "city_data" does not exist
+[2025-04-11T03:18:03.833Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:03.834Z] [ERROR] Error getting top cities for IL: relation "city_data" does not exist
+[2025-04-11T03:18:04.034Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:04.034Z] [ERROR] Error getting top cities for VT: relation "city_data" does not exist
+[2025-04-11T03:18:04.352Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:04.353Z] [ERROR] Error getting top cities for MO: relation "city_data" does not exist
+[2025-04-11T03:18:04.490Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:04.491Z] [ERROR] Error getting top cities for KS: relation "city_data" does not exist
+[2025-04-11T03:18:04.684Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:04.684Z] [ERROR] Error getting top cities for IN: relation "city_data" does not exist
+[2025-04-11T03:18:04.956Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:04.956Z] [ERROR] Error getting top cities for VA: relation "city_data" does not exist
+[2025-04-11T03:18:05.273Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:05.274Z] [ERROR] Error getting top cities for MT: relation "city_data" does not exist
+[2025-04-11T03:18:05.391Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:05.391Z] [ERROR] Error getting top cities for KY: relation "city_data" does not exist
+[2025-04-11T03:18:05.622Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:05.622Z] [ERROR] Error getting top cities for IA: relation "city_data" does not exist
+[2025-04-11T03:18:05.817Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:05.817Z] [ERROR] Error getting top cities for WA: relation "city_data" does not exist
+[2025-04-11T03:18:06.219Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:06.220Z] [ERROR] Error getting top cities for NE: relation "city_data" does not exist
+[2025-04-11T03:18:06.334Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:06.334Z] [ERROR] Error getting top cities for LA: relation "city_data" does not exist
+[2025-04-11T03:18:06.575Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:06.575Z] [ERROR] Error getting top cities for KS: relation "city_data" does not exist
+[2025-04-11T03:18:06.789Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:06.790Z] [ERROR] Error getting top cities for WV: relation "city_data" does not exist
+[2025-04-11T03:18:07.311Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:07.311Z] [ERROR] Error getting top cities for NV: relation "city_data" does not exist
+[2025-04-11T03:18:07.511Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:07.511Z] [ERROR] Error getting top cities for ME: relation "city_data" does not exist
+[2025-04-11T03:18:07.658Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:07.658Z] [ERROR] Error getting top cities for KY: relation "city_data" does not exist
+[2025-04-11T03:18:07.718Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:07.718Z] [ERROR] Error getting top cities for WI: relation "city_data" does not exist
+[2025-04-11T03:18:08.386Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:08.386Z] [ERROR] Error getting top cities for MD: relation "city_data" does not exist
+[2025-04-11T03:18:08.605Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:08.605Z] [ERROR] Error getting top cities for LA: relation "city_data" does not exist
+[2025-04-11T03:18:08.670Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:08.670Z] [ERROR] Error getting top cities for NH: relation "city_data" does not exist
+[2025-04-11T03:18:08.684Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:08.684Z] [ERROR] Error getting top cities for WY: relation "city_data" does not exist
+[2025-04-11T03:18:09.338Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:09.339Z] [ERROR] Error getting top cities for MA: relation "city_data" does not exist
+[2025-04-11T03:18:09.471Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:09.471Z] [ERROR] Error getting top cities for ME: relation "city_data" does not exist
+[2025-04-11T03:18:09.632Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:09.632Z] [ERROR] Error getting top cities for NJ: relation "city_data" does not exist
+[2025-04-11T03:18:10.282Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:10.282Z] [ERROR] Error getting top cities for MI: relation "city_data" does not exist
+[2025-04-11T03:18:10.430Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:10.431Z] [ERROR] Error getting top cities for MD: relation "city_data" does not exist
+[2025-04-11T03:18:10.583Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:10.583Z] [ERROR] Error getting top cities for NM: relation "city_data" does not exist
+[2025-04-11T03:18:11.246Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:11.246Z] [ERROR] Error getting top cities for MN: relation "city_data" does not exist
+[2025-04-11T03:18:11.407Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:11.408Z] [ERROR] Error getting top cities for MA: relation "city_data" does not exist
+[2025-04-11T03:18:11.537Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:11.537Z] [ERROR] Error getting top cities for NY: relation "city_data" does not exist
+[2025-04-11T03:18:12.091Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:12.091Z] [ERROR] Error getting top cities for MS: relation "city_data" does not exist
+[2025-04-11T03:18:12.230Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:12.230Z] [ERROR] Error getting top cities for AL: relation "city_data" does not exist
+[2025-04-11T03:18:12.366Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:12.366Z] [ERROR] Error getting top cities for MI: relation "city_data" does not exist
+[2025-04-11T03:18:12.478Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:12.478Z] [ERROR] Error getting top cities for NC: relation "city_data" does not exist
+[2025-04-11T03:18:13.030Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:13.030Z] [ERROR] Error getting top cities for MO: relation "city_data" does not exist
+[2025-04-11T03:18:13.189Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:13.190Z] [ERROR] Error getting top cities for AK: relation "city_data" does not exist
+[2025-04-11T03:18:13.219Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:13.219Z] [ERROR] Error getting top cities for MN: relation "city_data" does not exist
+[2025-04-11T03:18:13.422Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:13.423Z] [ERROR] Error getting top cities for ND: relation "city_data" does not exist
+[2025-04-11T03:18:13.962Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:13.962Z] [ERROR] Error getting top cities for MT: relation "city_data" does not exist
+[2025-04-11T03:18:14.123Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:14.123Z] [ERROR] Error getting top cities for AZ: relation "city_data" does not exist
+[2025-04-11T03:18:14.203Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:14.203Z] [ERROR] Error getting top cities for MS: relation "city_data" does not exist
+[2025-04-11T03:18:14.354Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:14.355Z] [ERROR] Error getting top cities for OH: relation "city_data" does not exist
+[2025-04-11T03:18:14.879Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:14.880Z] [ERROR] Error getting top cities for NE: relation "city_data" does not exist
+[2025-04-11T03:18:15.065Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:15.065Z] [ERROR] Error getting top cities for AR: relation "city_data" does not exist
+[2025-04-11T03:18:15.143Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:15.144Z] [ERROR] Error getting top cities for MO: relation "city_data" does not exist
+[2025-04-11T03:18:15.210Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:15.210Z] [ERROR] Error getting top cities for OK: relation "city_data" does not exist
+[2025-04-11T03:18:15.850Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:15.851Z] [ERROR] Error getting top cities for NV: relation "city_data" does not exist
+[2025-04-11T03:18:16.042Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:16.042Z] [ERROR] Error getting top cities for CA: relation "city_data" does not exist
+[2025-04-11T03:18:16.099Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:16.099Z] [ERROR] Error getting top cities for MT: relation "city_data" does not exist
+[2025-04-11T03:18:16.162Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:16.162Z] [ERROR] Error getting top cities for OR: relation "city_data" does not exist
+[2025-04-11T03:18:16.813Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:16.814Z] [ERROR] Error getting top cities for NH: relation "city_data" does not exist
+[2025-04-11T03:18:16.939Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:16.939Z] [ERROR] Error getting top cities for CO: relation "city_data" does not exist
+[2025-04-11T03:18:17.145Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:17.145Z] [ERROR] Error getting top cities for NE: relation "city_data" does not exist
+[2025-04-11T03:18:17.197Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:17.197Z] [ERROR] Error getting top cities for PA: relation "city_data" does not exist
+[2025-04-11T03:18:17.829Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:17.830Z] [ERROR] Error getting top cities for NJ: relation "city_data" does not exist
+[2025-04-11T03:18:17.900Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:17.901Z] [ERROR] Error getting top cities for CT: relation "city_data" does not exist
+[2025-04-11T03:18:18.110Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:18.110Z] [ERROR] Error getting top cities for NV: relation "city_data" does not exist
+[2025-04-11T03:18:18.135Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:18.135Z] [ERROR] Error getting top cities for RI: relation "city_data" does not exist
+[2025-04-11T03:18:18.806Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:18.807Z] [ERROR] Error getting top cities for NM: relation "city_data" does not exist
+[2025-04-11T03:18:18.858Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:18.859Z] [ERROR] Error getting top cities for DE: relation "city_data" does not exist
+[2025-04-11T03:18:19.109Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:19.109Z] [ERROR] Error getting top cities for NH: relation "city_data" does not exist
+[2025-04-11T03:18:19.192Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:19.192Z] [ERROR] Error getting top cities for SC: relation "city_data" does not exist
+[2025-04-11T03:18:19.729Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:19.729Z] [ERROR] Error getting top cities for NY: relation "city_data" does not exist
+[2025-04-11T03:18:19.802Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:19.802Z] [ERROR] Error getting top cities for FL: relation "city_data" does not exist
+[2025-04-11T03:18:20.003Z] [ERROR] Database query error: relation "city_data" does not exist
+[2025-04-11T03:18:20.003Z] [ERROR] Error getting top cities for NJ: relation "city_data" does not exist
+[2025-04-11T03:23:42.923Z] [ERROR] Error stopping batch operation: No batch is currently running

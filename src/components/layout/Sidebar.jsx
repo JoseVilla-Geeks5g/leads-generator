@@ -23,6 +23,7 @@ export default function Sidebar() {
             items: [
                 { icon: 'search', label: 'Find Leads', path: '/leads' },
                 { icon: 'category', label: 'Random Categories', path: '/random-categories', highlight: true },
+                { icon: 'map', label: 'State Batches', path: '/batch', highlight: true },
                 { icon: 'task_alt', label: 'Tasks', path: '/tasks' }
             ]
         },
