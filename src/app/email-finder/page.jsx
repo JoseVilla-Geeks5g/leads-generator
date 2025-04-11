@@ -39,6 +39,11 @@ export default function EmailFinderPage() {
     const [isDomainSearching, setIsDomainSearching] = useState(false);
     const [domainSearchError, setDomainSearchError] = useState(null);
 
+    // Add new states for advanced filtering
+    const [searchTermOptions, setSearchTermOptions] = useState([]);
+    const [isLoadingSearchTerms, setIsLoadingSearchTerms] = useState(false);
+    const [advancedFilterVisible, setAdvancedFilterVisible] = useState(false);
+
     // Calculate percentage complete
     const percentComplete = useMemo(() => {
         if (!status.isRunning || status.queueLength === 0) return 0;
@@ -79,6 +84,27 @@ export default function EmailFinderPage() {
         return () => {
             if (statusTimer) clearInterval(statusTimer);
         };
+    }, []);
+
+    // Add new effect to fetch available search terms
+    useEffect(() => {
+        const fetchSearchTerms = async () => {
+            try {
+                setIsLoadingSearchTerms(true);
+                const response = await fetch('/api/search-terms');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    setSearchTermOptions(data.searchTerms || []);
+                }
+            } catch (error) {
+                console.error('Error fetching search terms:', error);
+            } finally {
+                setIsLoadingSearchTerms(false);
+            }
+        };
+
+        fetchSearchTerms();
     }, []);
 
     // Fetch stats from the API
@@ -173,6 +199,54 @@ export default function EmailFinderPage() {
             setTimeout(fetchStatus, 500);
         } catch (error) {
             console.error('Error starting email finder:', error);
+            setMessage({
+                type: 'error',
+                text: error.message
+            });
+        }
+    };
+
+    // Add function to start email finder with search term filter
+    const startFilteredEmailFinder = async () => {
+        try {
+            setMessage(null); // Clear any existing messages
+
+            const response = await fetch('/api/email-finder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'filter', // Use the new 'filter' action
+                    ...processingOptions,
+                    hasWebsite: true, // Always use websites for email finding
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to start email finder');
+            }
+
+            const data = await response.json();
+
+            // Update UI to match server state
+            setStatus({
+                isRunning: true,
+                queueLength: data.queueSize,
+                processed: 0,
+                emailsFound: 0
+            });
+
+            setMessage({
+                type: 'success',
+                text: `Processing ${data.queueSize} businesses for emails using filters`
+            });
+
+            // Force immediate status check after starting
+            setTimeout(fetchStatus, 500);
+        } catch (error) {
+            console.error('Error starting filtered email finder:', error);
             setMessage({
                 type: 'error',
                 text: error.message
@@ -511,6 +585,87 @@ export default function EmailFinderPage() {
                                     </h2>
 
                                     <div className="space-y-4">
+                                        {/* NEW: Search Term Selector */}
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">Search Term Filter</label>
+                                            <select
+                                                className="w-full p-2 border border-light rounded-md"
+                                                value={processingOptions.searchTerm || ''}
+                                                onChange={(e) => handleOptionChange('searchTerm', e.target.value || null)}
+                                                disabled={status.isRunning || isLoadingSearchTerms}
+                                            >
+                                                <option value="">All Search Terms</option>
+                                                {searchTermOptions.map((term, index) => (
+                                                    <option key={index} value={term}>
+                                                        {term}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Filter businesses by their search term (e.g., "Digital Marketing Agency")
+                                            </p>
+                                        </div>
+
+                                        {/* NEW: Toggle Advanced Filters button */}
+                                        <button 
+                                            onClick={() => setAdvancedFilterVisible(!advancedFilterVisible)}
+                                            className="btn btn-outline btn-sm w-full flex items-center justify-center"
+                                            disabled={status.isRunning}
+                                        >
+                                            <span className="material-icons mr-2 text-sm">
+                                                {advancedFilterVisible ? 'expand_less' : 'expand_more'}
+                                            </span>
+                                            {advancedFilterVisible ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
+                                        </button>
+
+                                        {/* Advanced Filters Section - conditionally visible */}
+                                        {advancedFilterVisible && (
+                                            <>
+                                                {/* State Filter */}
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-2">State</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g., CA, NY, TX"
+                                                        className="w-full p-2 border border-light rounded-md"
+                                                        value={processingOptions.state || ''}
+                                                        onChange={(e) => handleOptionChange('state', e.target.value || null)}
+                                                        disabled={status.isRunning}
+                                                    />
+                                                </div>
+
+                                                {/* City Filter */}
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-2">City</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g., Los Angeles"
+                                                        className="w-full p-2 border border-light rounded-md"
+                                                        value={processingOptions.city || ''}
+                                                        onChange={(e) => handleOptionChange('city', e.target.value || null)}
+                                                        disabled={status.isRunning}
+                                                    />
+                                                </div>
+
+                                                {/* Min Rating */}
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-2">Minimum Rating</label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="5"
+                                                        step="0.1"
+                                                        placeholder="e.g., 4.0"
+                                                        className="w-full p-2 border border-light rounded-md"
+                                                        value={processingOptions.minRating || ''}
+                                                        onChange={(e) => handleOptionChange('minRating', e.target.value || null)}
+                                                        disabled={status.isRunning}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Process Limit */}
                                         <div>
                                             <label className="block text-sm font-medium mb-2">Process Limit</label>
                                             <div className="flex items-center gap-2">
@@ -640,6 +795,20 @@ export default function EmailFinderPage() {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Add a new button for filtered processing */}
+                                    {!!processingOptions.searchTerm && (
+                                        <div className="mt-6">
+                                            <button
+                                                onClick={startFilteredEmailFinder}
+                                                disabled={status.isRunning}
+                                                className="btn btn-primary w-full flex items-center justify-center"
+                                            >
+                                                <span className="material-icons mr-2">filter_list</span>
+                                                Find Emails for "{processingOptions.searchTerm}"
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Status Panel - only shown when running */}

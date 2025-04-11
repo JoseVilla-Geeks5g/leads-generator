@@ -21,7 +21,7 @@ export async function POST(request) {
     try {
         const body = await request.json();
         const {
-            action, // 'start', 'stop', 'specific'
+            action, // 'start', 'stop', 'specific', 'filter'
             limit = 50000, // Use the higher limit of 50k
             onlyWithWebsite = true,
             skipContacted = true,
@@ -30,8 +30,13 @@ export async function POST(request) {
             timeout = 30000,    // 30 seconds default timeout per site
             maxDepth = 2,       // How deep to crawl links on site
             domainFilter = null, // Optional domain filter
-            useSearchEngines = true, // NEW: Whether to use search engines
-            searchEngine = 'google' // NEW: Which search engine to use
+            useSearchEngines = true, // Whether to use search engines
+            searchEngine = 'google', // Which search engine to use
+            searchTerm = null,   // NEW: Filter by search term
+            minRating = null,    // NEW: Filter by minimum rating
+            hasWebsite = true,   // NEW: Explicit filter for businesses with websites
+            state = null,        // NEW: Filter by state
+            city = null          // NEW: Filter by city
         } = body;
 
         // Database must be initialized before any operations
@@ -59,29 +64,37 @@ export async function POST(request) {
                     );
                 }
 
-                // Configure advanced email finder options
+                // Configure advanced email finder options with new filters
                 const options = {
                     limit,
-                    onlyWithWebsite,
+                    onlyWithWebsite: hasWebsite !== false, // Always true unless explicitly set to false
                     skipContacted,
                     concurrency,
                     timeout,
                     maxDepth,
                     domainFilter,
                     useSearchEngines,
-                    searchEngine
+                    searchEngine,
+                    searchTerm,
+                    minRating,
+                    state,
+                    city
                 };
 
                 // Add options to the logger for debugging
                 logger.info(`Starting email finder with options: ${JSON.stringify({
                     limit,
-                    onlyWithWebsite,
+                    onlyWithWebsite: options.onlyWithWebsite,
                     skipContacted,
                     concurrency,
                     maxDepth,
                     domainFilter: domainFilter || 'none',
                     useSearchEngines,
-                    searchEngine
+                    searchEngine,
+                    searchTerm: searchTerm || 'none',
+                    minRating: minRating || 'none',
+                    state: state || 'all',
+                    city: city || 'all'
                 })}`);
 
                 // Start email finder with the real implementation
@@ -92,6 +105,64 @@ export async function POST(request) {
                     queueSize,
                     isRunning: true,
                     options
+                });
+
+            case 'filter':
+                // NEW: Special case to process businesses based on filters
+                if (scraperService.getEmailFinderStatus().isRunning) {
+                    return NextResponse.json(
+                        { error: 'Email finder is already running' },
+                        { status: 400 }
+                    );
+                }
+
+                // Configure filter options
+                const filterOptions = {
+                    limit,
+                    onlyWithWebsite: hasWebsite !== false,
+                    skipContacted,
+                    concurrency,
+                    timeout,
+                    maxDepth,
+                    domainFilter,
+                    useSearchEngines,
+                    searchEngine,
+                    searchTerm,
+                    minRating,
+                    state,
+                    city
+                };
+
+                logger.info(`Starting email finder with search term "${searchTerm || 'all'}" and filters: ${JSON.stringify({
+                    onlyWithWebsite: filterOptions.onlyWithWebsite,
+                    state: state || 'all',
+                    city: city || 'all',
+                    limit
+                })}`);
+
+                // Use the specialized method when search term is provided
+                if (searchTerm) {
+                    const processPromise = scraperService.processEmailsBySearchTerm(searchTerm, filterOptions);
+                    
+                    // We don't need to await here - just trigger the process
+                    processPromise.catch(err => logger.error(`Error in batch process: ${err.message}`));
+                    
+                    return NextResponse.json({
+                        message: `Email finder started for search term "${searchTerm}"`,
+                        queueSize: filterOptions.limit,
+                        isRunning: true,
+                        options: filterOptions
+                    });
+                }
+                
+                // Start email finder with filters (regular way when no search term)
+                const filteredQueueSize = await scraperService.processAllPendingBusinesses(filterOptions);
+
+                return NextResponse.json({
+                    message: `Email finder started for search term "${searchTerm || 'all businesses'}"`,
+                    queueSize: filteredQueueSize,
+                    isRunning: true,
+                    options: filterOptions
                 });
 
             case 'stop':
@@ -146,7 +217,7 @@ export async function POST(request) {
 
             default:
                 return NextResponse.json(
-                    { error: 'Invalid action. Use "start", "stop", or "specific"' },
+                    { error: 'Invalid action. Use "start", "stop", "filter", or "specific"' },
                     { status: 400 }
                 );
         }

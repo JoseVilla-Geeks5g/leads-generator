@@ -3,7 +3,7 @@ import db from './database';
 import logger from './logger';
 
 // Make sure emailFinder is properly imported at the top of the file
-const emailFinder = require('../../emailFinder');
+import emailFinder from '../../emailFinder';
 
 // Add import for our new scraper
 import googleMapsScraper from './googleMapsScraper';
@@ -36,6 +36,118 @@ async function findEmailSafe(website, options = {}) {
         logger.error(`Error finding email using emailFinder: ${error.message}`);
         return null;
     }
+}
+
+// Find email for a specific business
+async function findEmailForBusiness(business) {
+    if (!business || !business.website) {
+        logger.warn('Cannot find email: Business or website is missing');
+        return null;
+    }
+
+    // Make sure we explicitly pass the business ID in the options
+    const options = {
+        businessId: business.id, // Pass business ID explicitly
+        saveToDatabase: true     // Make sure to save to database
+    };
+
+    logger.info(`Searching for email for business ${business.id} with website ${business.website}`);
+    
+    try {
+        return await findEmailSafe(business.website, options);
+    } catch (error) {
+        logger.error(`Error finding email for business ${business.id}: ${error.message}`);
+        return null;
+    }
+}
+
+/**
+ * Process a batch of businesses to find their emails
+ */
+async function processEmailBatch(businesses, options = {}) {
+    const results = [];
+    let concurrency = options.concurrency || 3; 
+    let currentRunning = 0;
+    let completed = 0;
+    
+    // Track which businesses we've already processed
+    const processedIds = new Set();
+    
+    // Process businesses in small batches to avoid overwhelming the system
+    while (businesses.length > 0) {
+        // If we have capacity, start more tasks
+        while (currentRunning < concurrency && businesses.length > 0) {
+            const business = businesses.shift();
+            
+            // Skip if already processed or no website
+            if (processedIds.has(business.id) || !business.website) {
+                continue;
+            }
+            
+            processedIds.add(business.id);
+            currentRunning++;
+            
+            // Process business with explicit business ID
+            findEmailForBusiness(business).then(email => {
+                if (email) {
+                    results.push({
+                        id: business.id,
+                        name: business.name,
+                        email: email
+                    });
+                    
+                    logger.info(`Email found for business ${business.id}: ${email} (found in ${emailFinder.lastExtractedEmailSources?.get(email.toLowerCase()) || 'unknown'})`);
+                }
+            }).catch(error => {
+                logger.error(`Error processing business ${business.id}: ${error.message}`);
+            }).finally(() => {
+                currentRunning--;
+                completed++;
+            });
+            
+            // Small delay between starting new tasks
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Wait a bit before checking again
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    // Wait for all outstanding tasks to complete
+    while (currentRunning > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    return results;
+}
+
+// Process all businesses
+async function processAllPendingBusinesses(options = {}) {
+  // ...existing code...
+  
+  // Make sure all functions that call emailFinder pass the business ID correctly
+  
+  return await emailFinder.processAllPendingBusinesses({
+    ...options,
+    // Ensure these flags are set
+    saveToDatabase: true
+  });
+}
+
+// Process specific businesses
+async function processBusinesses(businessIds, options = {}) {
+  if (!Array.isArray(businessIds) || businessIds.length === 0) {
+    logger.error('No valid business IDs provided for processing');
+    return 0;
+  }
+  
+  // Log the business IDs to verify they're being passed
+  logger.info(`Processing emails for ${businessIds.length} businesses: ${businessIds.slice(0, 5).join(', ')}${businessIds.length > 5 ? '...' : ''}`);
+  
+  return await emailFinder.processBusinesses(businessIds, {
+    ...options,
+    saveToDatabase: true // Ensure we're saving to database
+  });
 }
 
 /**
@@ -967,7 +1079,7 @@ class ScraperService {
             for (let i = 0; i < count; i++) {
                 const name = `${category} Business ${Math.floor(Math.random() * 10000)}`;
                 const hasEmail = Math.random() > 0.3;
-                const hasWebsite = Math.random() > 0.2;
+                const hasWebsite = Math.random() > 2;
 
                 // Generate random data
                 const data = {
@@ -1334,17 +1446,16 @@ class ScraperService {
                             this.emailFinderStatus.runningTasks = running;
                         });
 
-                    // Small delay between starting each task to prevent overwhelming the system
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // No delay needed with VPN
                 }
 
-                // Wait a bit before checking again
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Minimal waiting time for checking task completion status
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
 
             // Wait for all tasks to complete
             while (running > 0 && this.emailFinderStatus.isRunning) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
 
             const duration = (Date.now() - this.emailFinderStatus.startTime) / 1000;
@@ -1816,10 +1927,318 @@ class ScraperService {
             status: 'stopped'
         };
     }
+
+    /**
+     * Add a new method to search by specific search term
+     * @param {string} searchTerm - The search term to filter businesses
+     * @param {Object} options - Additional options for filtering
+     * @returns {Object} Result object with processed and found counts
+     */
+    async processEmailsBySearchTerm(searchTerm, options = {}) {
+        try {
+            logger.info(`Finding emails for businesses with search term "${searchTerm}"`);
+            
+            // Make sure database is initialized
+            await db.init();
+            
+            // Build query with proper filtering parameters 
+            let query = `
+                SELECT id, name, website, domain 
+                FROM business_listings 
+                WHERE search_term = $1 
+                AND website IS NOT NULL AND website != ''
+                AND (email IS NULL OR email = '' OR email = '[null]')
+            `;
+            
+            const params = [searchTerm];
+            let paramIndex = 2;
+            
+            // Add optional filters
+            if (options.minRating) {
+                query += ` AND CAST(rating AS FLOAT) >= $${paramIndex}`;
+                params.push(parseFloat(options.minRating));
+                paramIndex++;
+            }
+            
+            if (options.state && options.state !== 'all') {
+                query += ` AND state = $${paramIndex}`;
+                params.push(options.state);
+                paramIndex++;
+            }
+            
+            if (options.city && options.city !== 'all') {
+                query += ` AND city = $${paramIndex}`;
+                params.push(options.city);
+                paramIndex++;
+            }
+            
+            // Add limit
+            const limit = options.limit || 100;
+            query += ` LIMIT $${paramIndex}`;
+            params.push(limit);
+            
+            logger.info(`Executing query with params ${JSON.stringify(params)}`);
+            
+            // Get businesses matching the criteria
+            const businesses = await db.getMany(query, params);
+            
+            if (!businesses || businesses.length === 0) {
+                logger.info(`No businesses found with search term "${searchTerm}" that need emails`);
+                return { processed: 0, found: 0 };
+            }
+            
+            logger.info(`Found ${businesses.length} businesses with search term "${searchTerm}" to process for emails`);
+            
+            // Process businesses in batches (parallel processing)
+            let processed = 0;
+            let emailsFound = 0;
+            
+            // Process in smaller batches to prevent memory issues
+            const batchSize = options.concurrency || 3;
+            
+            // Import VPN utilities
+            let vpnUtils;
+            try {
+                vpnUtils = require('../../vpn-utils');
+                // Initialize VPN utils
+                await vpnUtils.initialize().catch(err => 
+                    logger.warn(`VPN utilities initialization error: ${err.message}`)
+                );
+            } catch (error) {
+                logger.warn(`VPN utilities not available: ${error.message}`);
+                vpnUtils = null;
+            }
+            
+            let consecutiveFailures = 0;
+            const maxConsecutiveFailures = 5;
+            
+            for (let i = 0; i < businesses.length; i += batchSize) {
+                const batch = businesses.slice(i, i + batchSize);
+                
+                // Check if we need to rotate IP due to consecutive failures
+                if (consecutiveFailures >= maxConsecutiveFailures && vpnUtils) {
+                    logger.info(`Detected ${consecutiveFailures} consecutive failures, rotating VPN IP...`);
+                    
+                    try {
+                        const rotated = await vpnUtils.rotateIP();
+                        if (rotated) {
+                            logger.info('Successfully rotated VPN IP address');
+                            consecutiveFailures = 0;
+                            
+                            // Get the new IP info
+                            try {
+                                const ipInfo = await vpnUtils.getIPInfo();
+                                if (ipInfo) {
+                                    logger.info(`New IP: ${ipInfo.ip} (${ipInfo.city}, ${ipInfo.country})`);
+                                }
+                            } catch (ipErr) {
+                                // Non-critical error
+                                logger.warn(`Could not get new IP info: ${ipErr.message}`);
+                            }
+                        } else {
+                            logger.warn('Could not rotate VPN IP address');
+                        }
+                    } catch (vpnError) {
+                        logger.error(`VPN rotation error: ${vpnError.message}`);
+                    }
+                }
+                
+                // Process batch with enhanced error tracking
+                const batchPromises = batch.map(business => {
+                    // Ensure we pass business with ID to the email finder
+                    return findEmailForBusiness(business)
+                        .then(email => {
+                            processed++;
+                            if (email) {
+                                emailsFound++;
+                                consecutiveFailures = 0; // Reset failure counter on success
+                                logger.info(`Found email for business ${business.id}: ${email}`);
+                            } else {
+                                // Count as failure only if website exists but no email found
+                                if (business.website) {
+                                    consecutiveFailures++;
+                                }
+                            }
+                            return email;
+                        })
+                        .catch(error => {
+                            processed++;
+                            consecutiveFailures++; // Increment failure counter
+                            
+                            // Check if this looks like a block/captcha
+                            if (vpnUtils && (
+                                error.message.includes('captcha') || 
+                                error.message.includes('forbidden') || 
+                                error.message.includes('denied') ||
+                                error.message.includes('429') ||
+                                error.message.includes('unusual traffic')
+                            )) {
+                                vpnUtils.registerBlockDetection();
+                                logger.warn(`Detected potential block for ${business.id}: ${error.message}`);
+                            }
+                            
+                            logger.error(`Error processing business ${business.id}: ${error.message}`);
+                            return null;
+                        });
+                });
+                
+                // Wait for the current batch to complete
+                await Promise.all(batchPromises);
+                
+                // Log progress
+                logger.info(`Batch progress: processed ${processed}/${businesses.length}, found ${emailsFound} emails`);
+                
+                // Check if VPN rotation is needed based on block detection
+                if (vpnUtils && vpnUtils.shouldRotateIP()) {
+                    logger.info(`Block detection threshold reached, rotating VPN IP...`);
+                    try {
+                        await vpnUtils.rotateIP();
+                        // Wait for connection to stabilize
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    } catch (vpnError) {
+                        logger.error(`Error in automatic VPN rotation: ${vpnError.message}`);
+                    }
+                }
+                
+                // No delay needed when using VPN
+            }
+            
+            // Final status update
+            logger.info(`Email discovery completed: processed ${processed} businesses, found ${emailsFound} emails`);
+            
+            return { processed, found: emailsFound };
+            
+        } catch (error) {
+            logger.error(`Error in processEmailsBySearchTerm: ${error.message}`);
+            return { processed: 0, found: 0, error: error.message };
+        }
+    }
 }
 
 // Create singleton instance
 const scraperService = new ScraperService();
 
 // Export the service
-export default scraperService;
+export default {
+    // Service methods
+    addTask: (params) => scraperService.addTask(params),
+    getTaskStatus: (taskId) => scraperService.getTaskStatus(taskId),
+    getAllTasks: () => scraperService.getAllTasks(),
+    clearMockBusinesses: () => scraperService.clearMockBusinesses(),
+    
+    // Batch operations
+    startBatch: (states, options) => scraperService.startBatch(states, options),
+    stopBatch: () => scraperService.stopBatch(),
+    getBatchStatus: () => scraperService.getBatchStatus(),
+    
+    // Settings control
+    setAutoProcessing: (enabled, requireAuth) => scraperService.setAutoProcessing(enabled, requireAuth),
+    isAutoProcessingEnabled: () => scraperService.isAutoProcessingEnabled(),
+    setMockDataGeneration: (enabled) => scraperService.setMockDataGeneration(enabled),
+    isMockDataGenerationEnabled: () => scraperService.isMockDataGenerationEnabled(),
+    triggerTaskProcessing: () => scraperService.triggerTaskProcessing(),
+    
+    // Statistics
+    getStatistics: () => scraperService.getStatistics(),
+    
+    // Email finder functionality
+    findEmailForBusiness,
+    processEmailBatch,
+    getEmailFinderStatus: () => {
+        if (!emailFinder) return { isRunning: false };
+        return emailFinder.getStatus ? emailFinder.getStatus() : { isRunning: false };
+    },
+    
+    // Process all pending businesses - make sure to pass the businessId in options
+    processAllPendingBusinesses: async (options) => {
+        logger.info(`Starting email finder with search term "${options.searchTerm || 'all'}" and filters: ${JSON.stringify({
+            onlyWithWebsite: options.onlyWithWebsite || true,
+            state: options.state || 'all',
+            city: options.city || 'all',
+            limit: options.limit || 5000
+        })}`);
+        
+        // If search term is provided, use our specialized method for better business ID handling
+        if (options.searchTerm) {
+            return scraperService.processEmailsBySearchTerm(options.searchTerm, options);
+        }
+        
+        // Ensure we initialize emailFinder
+        if (!emailFinder) {
+            logger.error('Email finder module is not properly imported');
+            return 0;
+        }
+        
+        try {
+            return await emailFinder.processAllPendingBusinesses(options);
+        } catch (error) {
+            logger.error(`Error in processAllPendingBusinesses: ${error.message}`);
+            return 0;
+        }
+    },
+    
+    processBusinesses: async (businessIds, options = {}) => {
+        logger.info(`Processing ${businessIds.length} specific businesses for emails`);
+        
+        if (!emailFinder) {
+            logger.error('Email finder module is not properly imported');
+            return 0;
+        }
+        
+        try {
+            return await emailFinder.processBusinesses(businessIds, options);
+        } catch (error) {
+            logger.error(`Error in processBusinesses: ${error.message}`);
+            return 0;
+        }
+    },
+    
+    stopEmailFinder: async () => {
+        if (!emailFinder || !emailFinder.stop) {
+            logger.error('Email finder stop method not available');
+            return { processed: 0, emailsFound: 0 };
+        }
+        
+        try {
+            return await emailFinder.stop();
+        } catch (error) {
+            logger.error(`Error stopping email finder: ${error.message}`);
+            return { processed: 0, emailsFound: 0 };
+        }
+    },
+    
+    // New method to search by specific search term
+    processEmailsBySearchTerm: async (searchTerm, options = {}) => {
+        return await scraperService.processEmailsBySearchTerm(searchTerm, options);
+    },
+    
+    // New method to process a single business with better business ID handling
+    processEmailForBusiness: async (business) => {
+        if (!business) {
+            logger.error('Cannot process email: No business data provided');
+            return null;
+        }
+        
+        // Ensure business has an ID
+        if (!business.id) {
+            logger.error('Business is missing ID field:', business);
+            return null;
+        }
+        
+        // Ensure business has a website
+        if (!business.website) {
+            logger.warn(`Business ${business.id} has no website to check for email`);
+            return null;
+        }
+        
+        // Get the email with explicit businessId in options
+        const email = await findEmailForBusiness(business);
+        
+        // Return the result
+        return email ? {
+            businessId: business.id,
+            email,
+            success: true
+        } : null;
+    }
+};

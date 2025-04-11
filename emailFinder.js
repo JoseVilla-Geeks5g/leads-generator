@@ -9,6 +9,15 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Import VPN utilities
+let vpnUtils;
+try {
+  vpnUtils = require('./vpn-utils');
+} catch (error) {
+  console.warn(`VPN utilities not available: ${error.message}`);
+  vpnUtils = null;
+}
+
 // Replace debug with logger throughout the file
 class EmailFinder {
   constructor(options = {}) {
@@ -248,8 +257,38 @@ class EmailFinder {
         const conditions = [];
         const params = [];
 
+        // Define website condition based on options - enhanced with strict validation
+        const websiteCondition = searchOptions.onlyWithWebsite 
+          ? `website IS NOT NULL AND website != '' AND website != 'null' AND website NOT LIKE 'http://null%' AND website LIKE 'http%'` 
+          : `true`;
+        
         // Base WHERE conditions that are always included
-        const baseWhere = `website IS NOT NULL AND website != '' AND (email IS NULL OR email = '')`;
+        const baseWhere = `${websiteCondition} AND (email IS NULL OR email = '' OR email = '[null]')`;
+        conditions.push(baseWhere);
+
+        // Add search term filter - NEW
+        if (searchOptions.searchTerm) {
+          params.push(searchOptions.searchTerm);
+          conditions.push(`search_term = $${params.length}`);
+        }
+
+        // Add state filter - NEW
+        if (searchOptions.state) {
+          params.push(searchOptions.state);
+          conditions.push(`state = $${params.length}`);
+        }
+
+        // Add city filter - NEW
+        if (searchOptions.city) {
+          params.push(searchOptions.city);
+          conditions.push(`city = $${params.length}`);
+        }
+
+        // Add minimum rating filter - NEW
+        if (searchOptions.minRating && !isNaN(searchOptions.minRating)) {
+          params.push(parseFloat(searchOptions.minRating));
+          conditions.push(`CAST(rating AS FLOAT) >= $${params.length}`);
+        }
 
         // Add optional conditions with proper parameter indexing
         if (searchOptions.batchId) {
@@ -287,8 +326,7 @@ class EmailFinder {
         const query = `
           SELECT id, name, website, domain
           FROM business_listings
-          WHERE ${baseWhere}
-          ${conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : ''}
+          WHERE ${conditions.join(' AND ')}
           ORDER BY id
           LIMIT $${params.length - 1} 
           OFFSET $${params.length}
@@ -419,6 +457,58 @@ class EmailFinder {
       ...options,
       business_ids: businessIds
     });
+  }
+
+  // Process specific businesses with search term filter
+  async processBusinessesWithSearchTerm(searchTerm, options = {}) {
+    try {
+      if (!searchTerm) {
+        logger.error('Search term is required');
+        return 0;
+      }
+
+      logger.info(`Processing businesses with search term: ${searchTerm}`);
+      
+      // Initialize database
+      if (db.init) {
+        await db.init();
+      }
+      
+      // Get businesses that match the search term and have missing emails
+      const query = `
+        SELECT id, name, website, domain
+        FROM business_listings
+        WHERE search_term = $1
+          AND website IS NOT NULL AND website != '' 
+          AND (email IS NULL OR email = '')
+        LIMIT $2
+      `;
+      
+      const limit = options.limit || 1000;
+      const businesses = await db.getMany(query, [searchTerm, limit]);
+      
+      if (!businesses || businesses.length === 0) {
+        logger.info(`No businesses found with search term "${searchTerm}" that need emails`);
+        return 0;
+      }
+      
+      logger.info(`Found ${businesses.length} businesses with search term "${searchTerm}" to process for emails`);
+      
+      // Set up the queue for processing
+      this.queue = [...businesses];
+      
+      // Process the queue
+      await this.processQueue({
+        ...this.options,
+        ...options,
+        saveToDatabase: true // Force saving to database
+      });
+      
+      return this.processed;
+    } catch (error) {
+      logger.error(`Error in processBusinessesWithSearchTerm: ${error.message}`);
+      return 0;
+    }
   }
 
   // Stop processing
@@ -594,7 +684,13 @@ class EmailFinder {
         try {
           // ONLY search for real emails - no generation
           if (business.website) {
-            const websiteEmails = await this.extractEmailsFromWebsite(business.website, options, workerId);
+            // Pass BOTH business.id and saveToDatabase:true to ensure emails are saved
+            const websiteEmails = await this.extractEmailsFromWebsite(business.website, {
+              ...options,
+              businessId: business.id,
+              saveToDatabase: true
+            }, workerId);
+            
             emails = emails.concat(websiteEmails);
           }
 
@@ -652,7 +748,9 @@ class EmailFinder {
                   // Set shorter timeout for contact pages
                   const contactPageOptions = {
                     ...options,
-                    timeout: Math.min(options.timeout, 15000) // Max 15 seconds for contact pages
+                    timeout: Math.min(options.timeout, 15000), // Max 15 seconds for contact pages
+                    businessId: business.id, // Pass business ID here too
+                    saveToDatabase: true
                   };
 
                   const contactEmails = await this.extractEmailsFromWebsite(url, contactPageOptions, workerId);
@@ -709,12 +807,11 @@ class EmailFinder {
           // Use the best found email - domain emails prioritized already by prioritizeEmails
           const primaryEmail = uniqueEmails[0];
 
-          // Save to the database
+          // Save to the database - make sure to pass the business ID explicitly
+          logger.info(`Worker ${workerId}: Found REAL email for ${business.website}: ${primaryEmail} with businessId=${business.id}`);
           await this.saveEmailToDatabase(business.id, primaryEmail, uniqueEmails.join(', '));
 
           this.emailsFound++;
-          logger.info(`Worker ${workerId}: Found REAL email for ${business.website}: ${primaryEmail}`);
-
           return uniqueEmails[0]; // Return only the best email
         } else {
           logger.info(`Worker ${workerId}: Only found invalid/suspicious emails for ${business.website} - not using them`);
@@ -735,1184 +832,570 @@ class EmailFinder {
     }
   }
 
-  // Extract emails from a website with enhanced error recovery
+  // Extract emails from a website with enhanced error recovery and better browser handling
   async extractEmailsFromWebsite(url, options, workerId = 0) {
-    // First validate that we have a working browser and page
-    if (!this.browser || !this.pagePool[workerId]) {
-      logger.warn(`Worker ${workerId}: Page or browser not available, attempting to reinitialize`);
+    // First validate that we have a working browser 
+    if (!this.browser) {
+      logger.warn(`Worker ${workerId}: Browser not available, attempting to reinitialize`);
       try {
-        // Wait for any pending operations to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Try to reinitialize just this worker
-        if (!this.browser) {
-          await this.initialize();
-        } else if (!this.pagePool[workerId]) {
-          await this.recoverWorkerContext(workerId);
-        }
+        await this.initialize();
       } catch (initError) {
-        logger.error(`Worker ${workerId}: Failed to reinitialize browser: ${initError.message}`);
+        logger.error(`Worker ${workerId}: Failed to initialize browser: ${initError.message}`);
         return []; // Return empty result since we can't proceed
       }
     }
 
-    // Verify we have a valid page after reinitialization attempt
-    if (!this.pagePool[workerId]) {
-      logger.error(`Worker ${workerId}: Still no valid page after reinitialization`);
+    // Get a fresh context for this navigation attempt
+    const context = await this.getOrCreateContext(workerId);
+    if (!context) {
+      logger.error(`Worker ${workerId}: Unable to get valid browser context`);
       return [];
     }
 
-    const page = this.pagePool[workerId];
-    const maxRetries = 2;
-    let retryCount = 0;
+    // Create a fresh page for each navigation attempt
+    let page;
+    try {
+      // Always create a fresh page to avoid stale context issues
+      page = await context.newPage();
+      logger.info(`Worker ${workerId}: Created fresh page for ${url}`);
+      
+      // Monitor for block-related console messages
+      page.on('console', async msg => {
+        const text = msg.text();
+        if (text.toLowerCase().includes('captcha') || 
+            text.toLowerCase().includes('security check') ||
+            text.toLowerCase().includes('unusual traffic')) {
+          logger.warn(`Worker ${workerId}: Detected potential block via console: ${text}`);
+          if (vpnUtils) vpnUtils.registerBlockDetection();
+        }
+      });
+      
+      // Monitor response statuses for blocks
+      page.on('response', async response => {
+        const status = response.status();
+        if (status === 403 || status === 429 || status === 503) {
+          logger.warn(`Worker ${workerId}: Received blocked status code ${status} from ${response.url()}`);
+          if (vpnUtils) vpnUtils.registerBlockDetection();
+          
+          // Check if we should rotate IP immediately
+          if (vpnUtils && vpnUtils.shouldRotateIP()) {
+            logger.info(`Worker ${workerId}: Block detection threshold reached, triggering VPN rotation`);
+            try {
+              // Force rotation when explicit block is detected
+              await vpnUtils.rotateIP(true);
+              // Close this page to ensure we start fresh after IP rotation
+              await page.close().catch(e => {});
+              page = null;
+              throw new Error(`Forced page closure due to IP rotation`);
+            } catch (vpnErr) {
+              logger.error(`Worker ${workerId}: Error rotating IP: ${vpnErr.message}`);
+            }
+          }
+        }
+      });
+    } catch (pageError) {
+      logger.error(`Worker ${workerId}: Failed to create page: ${pageError.message}`);
+      await this.recoverWorkerContext(workerId);
+      return [];
+    }
 
-    // Now proceed with the existing extraction logic with the verified page
-    while (retryCount <= maxRetries) {
+    const maxRetries = 3;
+    let retryCount = 0;
+    let rotatedIP = false;
+
+    while (retryCount < maxRetries) {
       try {
-        logger.info(`Worker ${workerId}: Visiting ${url} (attempt ${retryCount + 1}/${maxRetries + 1})`);
+        // Skip if the page was closed by VPN rotation
+        if (!page) {
+          logger.info(`Worker ${workerId}: Recreating page after IP rotation`);
+          try {
+            page = await context.newPage();
+          } catch (e) {
+            logger.error(`Worker ${workerId}: Failed to create new page after IP rotation: ${e.message}`);
+            return [];
+          }
+        }
+      
+        logger.info(`Worker ${workerId}: Visiting ${url} (attempt ${retryCount + 1}/${maxRetries})`);
 
         // Validate URL format first
         if (!url || !url.startsWith('http')) {
           throw new Error(`Invalid URL format: ${url}`);
         }
-
-        // IMPORTANT: Create a new page for each navigation to avoid context issues
-        // This is more reliable than trying to reuse the same page
+        
+        // Set navigation options with appropriate timeouts
+        const navigationOptions = {
+          waitUntil: 'domcontentloaded',
+          timeout: options.timeout || 30000
+        };
+        
+        // IMPORTANT: Implement additional navigation timeout protection
+        const navigationPromise = page.goto(url, navigationOptions);
+        
+        // Set up a separate timeout to guard against hanging navigations
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Navigation timeout exceeded')), navigationOptions.timeout * 1.2)
+        );
+        
         try {
-          // Close the existing page if it exists
-          if (this.pagePool[workerId]) {
-            await this.pagePool[workerId].close().catch(e => {
-              logger.warn(`Worker ${workerId}: Error closing existing page: ${e.message}`);
-            });
-          }
-
-          // Create a fresh page in the existing context
-          const context = this.contextPool[workerId];
-          if (!context) {
-            throw new Error("Context is not available, need full reinitialization");
-          }
-
-          // Create new page in this context
-          const newPage = await context.newPage();
-          this.pagePool[workerId] = newPage; // Update our working reference
-
-          logger.info(`Worker ${workerId}: Created fresh page for navigation`);
-        } catch (pageError) {
-          logger.error(`Worker ${workerId}: Failed to create fresh page: ${pageError.message}`);
-          // Fall back to full context recovery as a last resort
-          await this.recoverWorkerContext(workerId);
-        }
-
-        // Set a reasonable timeout
-        page.setDefaultTimeout(options.timeout || 30000);
-
-        // First check if page is valid and accessible
-        let navigationSuccess = false;
-        let navigationAttempts = 0;
-        let pageStable = false;
-
-        while (!navigationSuccess && navigationAttempts < 2) {
-          try {
-            // Use a more reliable navigation approach with longer timeouts
-            await page.goto(url, {
-              waitUntil: 'domcontentloaded', // Changed from 'load' to be more reliable
-              timeout: options.timeout * 1.2 // Give extra time for navigation
-            });
-
-            // Wait for the page to stabilize
-            await page.waitForTimeout(1500);
-
-            // Verify the page loaded successfully by checking that document and body exist
-            pageStable = await page.evaluate(() => {
-              return document && document.body ? true : false;
-            }).catch(e => {
-              logger.warn(`Worker ${workerId}: Page stability check failed: ${e.message}`);
-              return false;
-            });
-
-            if (pageStable) {
-              navigationSuccess = true;
-              logger.info(`Worker ${workerId}: Successfully loaded ${url}`);
-            } else {
-              throw new Error("Page not stable after navigation");
-            }
-          } catch (navError) {
-            navigationAttempts++;
-            logger.warn(`Worker ${workerId}: Navigation attempt ${navigationAttempts} failed for ${url}: ${navError.message}`);
-
-            // Try with www. prefix if it might be missing
-            if (navigationAttempts === 1 && !url.includes('www.') && url.startsWith('http')) {
-              const wwwUrl = url.replace('://', '://www.');
-              logger.info(`Worker ${workerId}: Retrying with www prefix: ${wwwUrl}`);
-
-              try {
-                // Try with longer timeout for www version
-                await page.goto(wwwUrl, {
-                  waitUntil: 'domcontentloaded',
-                  timeout: options.timeout * 1.5
-                });
-
-                // Verify page is stable
-                await page.waitForTimeout(1000);
-                pageStable = await page.evaluate(() => {
-                  return document && document.body ? true : false;
-                }).catch(() => false);
-
-                if (pageStable) {
-                  navigationSuccess = true;
-                  logger.info(`Worker ${workerId}: Successfully loaded ${wwwUrl}`);
-                }
-              } catch (wwwError) {
-                logger.warn(`Worker ${workerId}: Failed with www prefix too: ${wwwError.message}`);
+          // Race the navigation against our manual timeout
+          await Promise.race([navigationPromise, timeoutPromise]);
+          
+          // Check response status code
+          const response = await page.evaluate(() => ({
+            status: window.performance.getEntries().length > 0 ? 200 : 0
+          })).catch(() => ({ status: 0 }));
+          
+          // Get page content to check for blocks
+          const html = await page.content().catch(() => '');
+          
+          // Check if we're blocked using vpnUtils
+          if (vpnUtils && vpnUtils.isBlocked(response.status, html)) {
+            logger.warn(`Worker ${workerId}: Detected block or CAPTCHA on ${url}`);
+            
+            // Rotate IP if we haven't already for this attempt
+            if (!rotatedIP) {
+              logger.info(`Worker ${workerId}: Attempting to rotate VPN IP and retry...`);
+              // Force rotation when explicit block is detected
+              rotatedIP = await vpnUtils.rotateIP(true);
+              
+              if (rotatedIP) {
+                logger.info(`Worker ${workerId}: Successfully rotated IP, retrying request`);
+                
+                // Close current page to start fresh
+                await page.close().catch(() => {});
+                page = await context.newPage();
+                continue; // Retry without incrementing retryCount
               }
             }
-
-            if (!navigationSuccess) {
-              // Reset page state to avoid issues with partially loaded pages
-              try {
-                await page.goto('about:blank', { waitUntil: 'load', timeout: 5000 });
-                await page.waitForTimeout(500);
-              } catch (e) {
-                // Ignore errors on reset
-              }
-
-              // Delay before next attempt
-              const backoffDelay = Math.min(1000 * Math.pow(2, navigationAttempts), 5000);
-              await new Promise(resolve => setTimeout(resolve, backoffDelay));
+            
+            // If we couldn't rotate or already did, increment retry and continue
+            retryCount++;
+            continue;
+          }
+          
+          // Wait for the page to stabilize
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Verify the page loaded successfully
+          const pageStable = await this.isPageContentLoaded(page);
+          
+          if (pageStable) {
+            logger.info(`Worker ${workerId}: Successfully loaded ${url}`);
+            
+            // Extract emails with much more thorough methods
+            const emails = await this.extractImprovedEmails(page, url, workerId);
+            
+            // Close the page to free up resources
+            await page.close().catch(() => {});
+            
+            return emails;
+          } else {
+            throw new Error("Page content not properly loaded");
+          }
+        } catch (navError) {
+          logger.warn(`Worker ${workerId}: Navigation error: ${navError.message}`);
+          
+          // Check if this looks like a block and we haven't rotated IP yet
+          const isBlockError = navError.message.includes('Navigation timeout') || 
+                             navError.message.includes('net::ERR_');
+                             
+          if (isBlockError && !rotatedIP && vpnUtils) {
+            logger.info(`Worker ${workerId}: Navigation error might indicate blocking, rotating IP...`);
+            // Force rotation for navigation errors that indicate blocking
+            rotatedIP = await vpnUtils.rotateIP(true);
+            
+            if (rotatedIP) {
+              await page.close().catch(() => {});
+              page = await context.newPage();
+              continue; // Retry without incrementing retry counter
             }
           }
+          
+          // Clean up and retry
+          await page.close().catch(() => {});
+          page = await context.newPage();
+          retryCount++;
+          
+          // Add delay before retry
+          await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
         }
-
-        // If we still couldn't navigate successfully, throw an error
-        if (!navigationSuccess) {
-          throw new Error(`Could not navigate to ${url} after multiple attempts`);
-        }
-
-        // Extract emails with robust error handling
-        const emails = await this.extractEmailsWithRetry(page, url, workerId);
-        return emails;
-
       } catch (error) {
-        // Check if error is related to closed browser/context
-        const needsRecovery = error.message.includes('context') ||
-          error.message.includes('closed') ||
-          error.message.includes('destroyed') ||
-          error.message.includes('detached') ||
-          error.message.includes('undefined');
-
-        if (needsRecovery) {
-          logger.warn(`Worker ${workerId}: Browser context issue detected: ${error.message}. Attempting recovery.`);
-
-          // Full context recovery for any execution context issues
+        logger.error(`Worker ${workerId}: Error during extraction attempt: ${error.message}`);
+        
+        // Clean up
+        if (page) {
+          await page.close().catch(() => {});
+        }
+        
+        // Create a fresh page for next attempt
+        try {
+          page = await context.newPage();
+        } catch (e) {
+          logger.error(`Worker ${workerId}: Could not create new page: ${e.message}`);
+          await this.recoverWorkerContext(workerId);
           try {
-            await this.recoverWorkerContext(workerId);
-            // Short delay after recovery
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (recoveryError) {
-            logger.error(`Worker ${workerId}: Failed to recover context: ${recoveryError.message}`);
+            page = await context.newPage();
+          } catch (e2) {
+            logger.error(`Worker ${workerId}: Failed to create page even after recovery: ${e2.message}`);
+            return [];
           }
         }
-
-        // Implement exponential backoff for retries
+        
         retryCount++;
-
-        if (retryCount <= maxRetries) {
-          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-          logger.warn(`Worker ${workerId}: Error extracting emails (attempt ${retryCount}/${maxRetries + 1}), retrying in ${backoffDelay}ms: ${error.message}`);
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
-        } else {
-          logger.error(`Worker ${workerId}: Failed to extract emails after ${maxRetries + 1} attempts: ${error.message}`);
-          return []; // Return empty array after all retries failed
-        }
+        await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
       }
     }
 
-    return []; // Return empty array if somehow we exit the retry loop
+    // Close the page if it's still open
+    if (page) {
+      await page.close().catch(() => {});
+    }
+
+    logger.error(`Worker ${workerId}: Failed to extract emails after ${maxRetries} attempts: Could not navigate to ${url}`);
+    return [];
   }
 
-  // New method to recover a specific worker's context and page - improved version
-  async recoverWorkerContext(workerId) {
-    logger.info(`Recovering browser context for worker ${workerId}`);
-
+  // Get or create a browser context for a worker
+  async getOrCreateContext(workerId) {
     try {
-      // Close existing resources if they exist
-      if (this.pagePool[workerId]) {
-        await this.pagePool[workerId].close().catch(e =>
-          logger.warn(`Error closing worker ${workerId} page: ${e.message}`)
-        );
-        this.pagePool[workerId] = null;
+      // Make sure browser is initialized
+      if (!this.browser) {
+        logger.warn(`Worker ${workerId}: Browser not initialized, initializing now`);
+        await this.initialize();
       }
 
-      if (this.contextPool[workerId]) {
-        await this.contextPool[workerId].close().catch(e =>
-          logger.warn(`Error closing worker ${workerId} context: ${e.message}`)
-        );
-        this.contextPool[workerId] = null;
-      }
-
-      // Create new context and page
-      if (this.browser) {
+      // Check if we have a context at the worker's index
+      if (!this.contextPool[workerId]) {
+        logger.info(`Worker ${workerId}: Creating new browser context`);
+        
+        // Create a new context with proper configuration
         const context = await this.browser.newContext({
           userAgent: this.options.userAgent,
           viewport: { width: 1920, height: 1080 },
           locale: 'en-US',
-          timezone: 'America/New_York', // Using timezone instead of timezoneId
+          timezoneId: 'America/New_York',
           bypassCSP: true,
+          deviceScaleFactor: 1,
+          isMobile: false,
+          hasTouch: false,
           ignoreHTTPSErrors: true,
-          javaScriptEnabled: true
+          javaScriptEnabled: true,
+          permissions: ['notifications']
         });
-
+        
         // Add anti-detection script
         await context.addInitScript(() => {
-          // Hide that we're automated
           Object.defineProperty(navigator, 'webdriver', { get: () => false });
-
-          // Add more browser "fingerprints"
+          Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5].map(() => ({ length: 1 })) });
           Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-          Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5].map(() => ({ length: 1 }))
-          });
-
-          // Add chrome object expected by some detection scripts
           window.chrome = { runtime: {} };
         });
-
-        const page = await context.newPage();
-
-        // Update pools
+        
+        // Store in pool
         this.contextPool[workerId] = context;
+        
+        // Create a corresponding page in this context
+        const page = await context.newPage();
         this.pagePool[workerId] = page;
-
-        logger.info(`Worker ${workerId}: Successfully recovered browser context`);
-        return true;
-      } else {
-        // If browser itself is invalid, we need to fully reinitialize
-        await this.initialize();
-        logger.info(`Full browser reinitialization completed for worker ${workerId}`);
-        return true;
       }
+
+      return this.contextPool[workerId];
     } catch (error) {
-      logger.error(`Failed to recover context for worker ${workerId}: ${error.message}`);
-      throw error; // Rethrow so caller knows recovery failed
+      logger.error(`Worker ${workerId}: Error getting or creating context: ${error.message}`);
+      return null;
     }
   }
 
-  // New method to verify if a page is still valid
+  // Check if a page is valid and usable
   async isPageValid(page, workerId) {
-    if (!page) return false;
+    if (!page) {
+      logger.warn(`Worker ${workerId}: Page is null`);
+      return false;
+    }
 
     try {
-      // Try a simple operation that would fail if page is not valid
-      await Promise.race([
-        page.evaluate(() => true),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
-      ]);
+      // Simple test to check if page evaluation still works
+      await page.evaluate(() => document.title).catch(() => {
+        throw new Error('Page evaluation failed');
+      });
+      
       return true;
-    } catch (e) {
-      logger.warn(`Worker ${workerId}: Page validation failed: ${e.message}`);
+    } catch (error) {
+      logger.warn(`Worker ${workerId}: Page validation failed: ${error.message}`);
       return false;
     }
   }
 
-  // New method for processing contact URLs with better error handling
-  async processContactUrls(contactUrls, domain, options, workerId) {
-    let emails = [];
-
-    // Try each contact URL until we find emails, with improved error handling
-    for (const url of contactUrls) {
-      try {
-        if (emails.length === 0 && !this.isStopping) {
-          logger.info(`Worker ${workerId}: Trying contact page ${url}`);
-
-          // Set shorter timeout for contact pages
-          const contactPageOptions = {
-            ...options,
-            timeout: Math.min(options.timeout, 15000) // Max 15 seconds for contact pages
-          };
-
-          // Clear page state before trying new URL
-          try {
-            await this.pagePool[workerId].goto('about:blank', { waitUntil: 'load', timeout: 5000 });
-            await this.pagePool[workerId].waitForTimeout(300);
-          } catch (e) {
-            // Ignore errors on blank page
-          }
-
-          const contactEmails = await this.extractEmailsFromWebsite(url, contactPageOptions, workerId);
-
-          if (contactEmails && contactEmails.length > 0) {
-            logger.info(`Worker ${workerId}: Found ${contactEmails.length} emails on ${url}`);
-            emails = emails.concat(contactEmails);
-            break; // Exit loop once we find emails
-          }
-        }
-      } catch (contactError) {
-        // Log but continue to next URL
-        logger.warn(`Worker ${workerId}: Error checking contact URL ${url}: ${contactError.message}`);
-        continue;
+  // Recover worker context if it becomes invalid
+  async recoverWorkerContext(workerId) {
+    logger.info(`Worker ${workerId}: Recovering browser context`);
+    
+    try {
+      // Close existing resources if they exist
+      if (this.pagePool[workerId]) {
+        await this.pagePool[workerId].close().catch(e => 
+          logger.warn(`Worker ${workerId}: Error closing page: ${e.message}`)
+        );
       }
 
-      // Small delay between contact page attempts to avoid overloading
-      await this.randomDelay(300, 700);
-    }
+      if (this.contextPool[workerId]) {
+        await this.contextPool[workerId].close().catch(e => 
+          logger.warn(`Worker ${workerId}: Error closing context: ${e.message}`)
+        );
+      }
 
-    return emails;
-  }
+      // Create new context
+      const context = await this.browser.newContext({
+        userAgent: this.options.userAgent,
+        viewport: { width: 1920, height: 1080 },
+        locale: 'en-US',
+        timezoneId: 'America/New_York',
+        bypassCSP: true,
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+        ignoreHTTPSErrors: true,
+        javaScriptEnabled: true,
+        permissions: ['notifications']
+      });
 
-  // Add cleanup method to avoid the "not a function" error
-  async cleanup() {
-    logger.info('Cleaning up email finder resources');
-    try {
-      await this.close();
+      // Add anti-detection script
+      await context.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5].map(() => ({ length: 1 })) });
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        window.chrome = { runtime: {} };
+      });
+
+      // Create new page
+      const page = await context.newPage();
+      
+      // Update pools
+      this.contextPool[workerId] = context;
+      this.pagePool[workerId] = page;
+      
+      logger.info(`Worker ${workerId}: Context and page successfully recovered`);
+      return true;
     } catch (error) {
-      logger.error(`Error in email finder cleanup: ${error.message}`);
+      logger.error(`Worker ${workerId}: Failed to recover context: ${error.message}`);
+      throw error;
     }
   }
 
-  // FIXED: Search engine based email discovery with correct parameter name
+  // Check if page content loaded successfully
+  async isPageContentLoaded(page) {
+    try {
+      if (!page) return false;
+
+      // Check if document body exists and has content
+      const hasContent = await page.evaluate(() => {
+        return document && 
+               document.body && 
+               document.body.innerText && 
+               document.body.innerText.length > 10;
+      }).catch(() => false);
+
+      return hasContent;
+    } catch (error) {
+      logger.warn(`Error checking page content: ${error.message}`);
+      return false;
+    }
+  }
+
+  // Process URL list for contact pages
+  async processContactUrls(urls, domain, options, workerId) {
+    const emails = new Set();
+    
+    logger.info(`Worker ${workerId}: Processing ${urls.length} contact URLs for ${domain}`);
+    
+    // Process only the first 3 URLs to avoid spending too much time
+    const limitedUrls = urls.slice(0, 3);
+    
+    for (const url of limitedUrls) {
+      // Stop if we already found emails
+      if (emails.size > 0 || this.isStopping) break;
+      
+      try {
+        logger.info(`Worker ${workerId}: Checking contact URL: ${url}`);
+        
+        const contactOptions = {
+          ...options,
+          timeout: 15000  // Shorter timeout for contact pages
+        };
+        
+        const contactEmails = await this.extractEmailsFromWebsite(url, contactOptions, workerId);
+        
+        if (contactEmails && contactEmails.length > 0) {
+          logger.info(`Worker ${workerId}: Found ${contactEmails.length} emails on ${url}`);
+          contactEmails.forEach(email => emails.add(email));
+        }
+      } catch (error) {
+        logger.warn(`Worker ${workerId}: Error checking contact URL ${url}: ${error.message}`);
+      }
+      
+      // Add small delay between attempts
+      if (emails.size === 0 && !this.isStopping) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    return Array.from(emails);
+  }
+
+  // Add the missing randomDelay function
+  async randomDelay(min = 0, max = 10) {
+    // With VPN, we can use minimal delays (0-10ms) or none at all
+    const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+    if (delay > 0) {
+      logger.info(`Minimal delay: ${delay}ms`);
+      return new Promise(resolve => setTimeout(resolve, delay));
+    }
+    return Promise.resolve(); // No delay
+  }
+
+  // Extract emails from text content
+  extractEmailsFromText(html, text, domain) {
+    try {
+      // Try all email regexes on both HTML and text content
+      const allEmailMatches = new Set();
+      
+      this.emailRegexes.forEach(regex => {
+        // Reset regex before each use
+        regex.lastIndex = 0;
+        
+        // Search in HTML
+        const htmlMatches = html.match(regex) || [];
+        htmlMatches.forEach(match => allEmailMatches.add(match));
+        
+        // Search in text if available
+        if (text) {
+          regex.lastIndex = 0;
+          const textMatches = text.match(regex) || [];
+          textMatches.forEach(match => allEmailMatches.add(match));
+        }
+      });
+      
+      // Process and clean up emails
+      const processedEmails = Array.from(allEmailMatches).map(email => {
+        // Extract actual email from string that might contain it
+        const emailPattern = /([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/;
+        const match = email.match(emailPattern);
+        return match ? match[1] : email;
+      });
+      
+      // Filter duplicates and invalid emails
+      const uniqueEmails = [...new Set(processedEmails)].filter(email => this.isValidEmail(email));
+      
+      return uniqueEmails;
+    } catch (error) {
+      logger.error(`Error extracting emails from text: ${error.message}`);
+      return [];
+    }
+  }
+
+  // Use search engines to discover emails
   async searchEngineEmailDiscovery(domain, options, workerId = 0) {
     try {
-      const searchEngine = options.searchEngine || this.options.searchEngine || 'google';
-      logger.info(`Worker ${workerId}: Using ${searchEngine} to search for emails on domain ${domain}`);
-
-      // Create a separate context for search engine queries with enhanced anti-bot measures
-      const context = await this.browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
-        viewport: { width: 1366, height: 768 },
-        locale: 'en-US',
-        timezone: 'America/New_York', // FIXED: Changed from timezoneId to timezone
-        geolocation: { longitude: -73.58, latitude: 45.50 }, // New York area
-        permissions: ['geolocation', 'notifications'],
-        colorScheme: 'light',
-        deviceScaleFactor: 1,
-        hasTouch: false
-      });
-
-      // Enhanced anti-bot detection measures
-      await context.addInitScript(() => {
-        // Override navigator properties to look more human-like
-        const originalNavigator = window.navigator;
-
-        // Make navigator properties non-enumerable to avoid detection
-        Object.defineProperty(window, 'navigator', {
-          value: new Proxy(originalNavigator, {
-            get: function (target, key) {
-              switch (key) {
-                case 'webdriver':
-                  return false;
-                case 'plugins':
-                  // Create fake plugins
-                  return {
-                    length: 5,
-                    refresh: () => { },
-                    item: () => ({
-                      description: 'PDF Viewer',
-                      filename: 'internal-pdf-viewer',
-                      name: 'Chrome PDF Viewer'
-                    }),
-                    namedItem: () => null
-                  };
-                case 'languages':
-                  return ['en-US', 'en', 'es'];
-                case 'platform':
-                  return 'Win32';
-                default:
-                  return Reflect.get(target, key);
-              }
-            }
-          }),
-          configurable: false
-        });
-
-        // Add chrome object for detector evasion
-        if (!window.chrome) {
-          window.chrome = {
-            runtime: {},
-            loadTimes: () => { },
-            csi: () => { },
-            app: {}
-          };
-        }
-
-        // Override permissions behavior
-        const originalPermissions = window.Permissions;
-        if (originalPermissions) {
-          window.Permissions.prototype.query = async function (param) {
-            return { state: 'granted', onchange: null };
-          };
-        }
-      });
-
+      if (!this.browser) {
+        await this.initialize();
+      }
+      
+      // Get a fresh context for search engine
+      const context = await this.getOrCreateContext(workerId);
+      if (!context) {
+        logger.error(`Worker ${workerId}: Unable to get search engine context`);
+        return [];
+      }
+      
+      // Create a fresh page
       const page = await context.newPage();
-      const foundEmails = new Set();
-
-      // Emulate human-like behavior - add mouse jiggler and scrolling
-      this.setupHumanBehavior(page);
-
-      // Track which search engine(s) we've tried
-      const attemptedEngines = new Set();
-
-      try {
-        // Try multiple search engines in order of preference
-        const engines = [searchEngine, 'bing', 'duckduckgo'].filter(
-          (engine, index, self) => self.indexOf(engine) === index
-        );
-
-        for (const engine of engines) {
-          if (foundEmails.size > 0) break; // Stop if we found emails
-          if (attemptedEngines.has(engine)) continue; // Skip if already tried
-
-          attemptedEngines.add(engine);
-          logger.info(`Worker ${workerId}: Trying search engine: ${engine}`);
-
-          // Create search queries optimized for finding emails - specialized for each search engine
-          const searchQueries = this.getOptimizedQueries(domain, engine);
-
-          // Try each search query until we find emails
-          for (let i = 0; i < searchQueries.length; i++) {
-            if (foundEmails.size > 0) break; // Stop if we already found emails
-
-            const query = searchQueries[i];
-            const searchUrl = this.buildSearchUrl(query, engine);
-
-            logger.info(`Worker ${workerId}: Searching with ${engine} for "${query}"`);
-
-            try {
-              // Enhanced navigation with more human-like behavior
-              await this.performHumanLikeSearch(page, searchUrl, workerId);
-
-              // Take a screenshot for debugging if enabled
-              if (options.takeScreenshots) {
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                const filename = path.join(this.debugDir, `search-${engine}-${this.sanitizeFilename(query)}-${timestamp}.png`);
-                await page.screenshot({ path: filename, fullPage: true })
-                  .catch(e => logger.warn(`Screenshot error: ${e.message}`));
-              }
-
-              // Check if we got a captcha or empty results
-              const isCaptcha = await page.evaluate(() => {
-                return document.title.includes('CAPTCHA') ||
-                  document.body.textContent.includes('robot') ||
-                  document.body.innerHTML.includes('recaptcha') ||
-                  document.body.innerHTML.includes('security check');
-              });
-
-              if (isCaptcha) {
-                logger.warn(`Worker ${workerId}: Detected CAPTCHA or security check on ${engine}, switching engines`);
-                break; // Move to next engine
-              }
-
-              // Extract both visible and hidden content to find emails
-              const pageContent = await page.content();
-              const bodyText = await page.evaluate(() => document.body.innerText);
-
-              logger.info(`Worker ${workerId}: Searching for emails in ${bodyText.length} characters of text`);
-
-              // Direct email extraction from page content - simpler and more reliable
-              const directEmails = this.extractEmailsFromText(pageContent, bodyText, domain);
-
-              if (directEmails.length > 0) {
-                directEmails.forEach(email => {
-                  logger.info(`Worker ${workerId}: Found email directly in search results: ${email}`);
-                  foundEmails.add(email.toLowerCase());
-                });
-                continue; // Try next query in case we find more
-              }
-
-              // Extract URLs from search results that might contain contact information
-              const resultUrls = await this.extractSearchResultUrls(page, domain);
-              logger.info(`Worker ${workerId}: Found ${resultUrls.length} result URLs to check`);
-
-              if (resultUrls.length === 0) {
-                logger.info(`Worker ${workerId}: No result URLs found, trying next search`);
-                continue;
-              }
-
-              // Visit first few search result pages to find emails
-              const maxToCheck = Math.min(resultUrls.length, options.maxSearchResults || 3);
-
-              for (let j = 0; j < maxToCheck; j++) {
-                if (foundEmails.size > 0) break; // Stop if we found emails
-
-                try {
-                  const url = resultUrls[j];
-                  logger.info(`Worker ${workerId}: Checking result page ${j + 1}: ${url}`);
-
-                  // Visit the page with human-like behavior
-                  await this.visitPageHumanLike(page, url, workerId);
-
-                  // Extract emails from this search result page
-                  const resultPageEmails = await this.extractEmailsFromPage(page);
-
-                  if (resultPageEmails.length > 0) {
-                    resultPageEmails.forEach(email => {
-                      foundEmails.add(email.toLowerCase());
-                      logger.info(`Worker ${workerId}: Found email on result page: ${email}`);
-                    });
-                  }
-                } catch (pageError) {
-                  logger.warn(`Worker ${workerId}: Error visiting result: ${pageError.message}`);
-                }
-
-                // Random delay between visiting results
-                await this.randomDelay(2000, 4000);
-              }
-
-              // Slightly longer delay between searches
-              await this.randomDelay(3000, 5000);
-
-            } catch (searchError) {
-              logger.warn(`Worker ${workerId}: Error with search query: ${searchError.message}`);
-              continue; // Try next query
-            }
-          }
-        }
-      } finally {
-        // Always close the context when done
-        await context.close().catch(e => logger.warn(`Error closing context: ${e.message}`));
-      }
-
-      return Array.from(foundEmails);
-    } catch (error) {
-      logger.error(`Worker ${workerId}: Search engine discovery failed: ${error.message}`);
-      return [];
-    }
-  }
-
-  // Helper to extract emails from text
-  extractEmailsFromText(html, text, domain) {
-    // Combine multiple regex patterns for better coverage
-    const foundEmails = new Set();
-
-    // Domain-specific regex to prioritize emails matching our domain
-    const domainPattern = new RegExp(`\\b[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9.-]*\\.)?${domain.replace(/\./g, '\\.')}\\b`, 'gi');
-    const domainMatches = html.match(domainPattern) || [];
-
-    // Generic email pattern
-    const genericPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi;
-    const genericMatches = html.match(genericPattern) || [];
-
-    // Look for email patterns in text (like "email: user@domain.com")
-    const emailLabelPattern = /\b(?:email|e-mail|contact|mail)(?:\s+us)?(?:\s*(?:at|:|=|is|to))?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
-    let match;
-    const labelMatches = [];
-
-    while ((match = emailLabelPattern.exec(text)) !== null) {
-      if (match[1]) labelMatches.push(match[1]);
-    }
-
-    // Add all found emails to the result set
-    [...domainMatches, ...labelMatches, ...genericMatches].forEach(email => {
-      // Basic normalization to extract just the email
-      const normalizedEmail = email.toLowerCase()
-        .replace(/^.*?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}).*$/, '$1');
-
-      if (this.isValidEmail(normalizedEmail)) {
-        foundEmails.add(normalizedEmail);
-      }
-    });
-
-    return Array.from(foundEmails);
-  }
-
-  // Get optimized search queries for different engines
-  getOptimizedQueries(domain, engine) {
-    const baseQueries = [
-      // Direct domain queries
-      `${domain} contact email`,
-      `${domain} "email us"`,
-      `${domain} "contact us"`,
-      `${domain} "email:"`,
-
-      // Common email prefixes for the domain
-      `${domain} "contact@"`,
-      `${domain} "info@"`,
-      `${domain} "hello@"`,
-
-      // Site-specific searches
-      `site:${domain} email`,
-      `site:${domain} contact`,
-      `site:${domain} mailto:`,
-    ];
-
-    // Customize queries based on search engine
-    switch (engine) {
-      case 'google':
-        return [
-          ...baseQueries,
-          `site:${domain} intitle:contact`,
-          `site:${domain}/contact intext:email`,
-          `site:${domain} intext:"email us" OR intext:"contact us"`,
-          `site:${domain} intext:@${domain.split('.')[0]}`,
-        ];
-
-      case 'bing':
-        return [
-          ...baseQueries,
-          `domain:${domain} email`,
-          `site:${domain} contains:mailto`,
-          `site:${domain} "get in touch"`,
-        ];
-
-      case 'duckduckgo':
-        return baseQueries; // DuckDuckGo works well with the base queries
-
-      default:
-        return baseQueries;
-    }
-  }
-
-  // Build search URL based on engine
-  buildSearchUrl(query, engine) {
-    const encodedQuery = encodeURIComponent(query);
-
-    switch (engine) {
-      case 'google':
-        // Use multiple country versions to avoid geo-restrictions
-        const googleDomains = ['com', 'co.uk', 'ca', 'com.au'];
-        const domain = googleDomains[Math.floor(Math.random() * googleDomains.length)];
-        return `https://www.google.${domain}/search?q=${encodedQuery}&num=100&hl=en`;
-
-      case 'bing':
-        return `https://www.bing.com/search?q=${encodedQuery}&count=50&cc=us`;
-
-      case 'duckduckgo':
-        return `https://duckduckgo.com/?q=${encodedQuery}&kl=us-en`;
-
-      default:
-        return `https://www.google.com/search?q=${encodedQuery}&num=50`;
-    }
-  }
-
-  // Setup human-like behavior for page
-  setupHumanBehavior(page) {
-    try {
-      // We'll implement this method to simulate mouse movements and scrolling
-      page.on('load', async () => {
-        try {
-          await page.evaluate(() => {
-            // Simulate random scrolling
-            const scrollRandomly = () => {
-              const maxScrolls = 3 + Math.floor(Math.random() * 5);
-              let scrollCount = 0;
-
-              const scroll = () => {
-                if (scrollCount >= maxScrolls) return;
-
-                const scrollAmount = 100 + Math.floor(Math.random() * 400);
-                window.scrollBy(0, scrollAmount);
-                scrollCount++;
-
-                setTimeout(scroll, 500 + Math.random() * 1000);
-              };
-
-              setTimeout(scroll, 500);
-            };
-
-            // Start random scrolling
-            scrollRandomly();
-          });
-        } catch (e) {
-          // Ignore errors in human behavior simulation
-        }
-      });
-    } catch (error) {
-      logger.warn(`Error setting up human behavior: ${error.message}`);
-    }
-  }
-
-  // Perform human-like search
-  async performHumanLikeSearch(page, searchUrl, workerId) {
-    try {
-      logger.info(`Worker ${workerId}: Navigating to search URL: ${searchUrl}`);
-
-      // Navigate with realistic parameters
-      await page.goto(searchUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
-
-      // Wait for a bit to let page fully render
-      await page.waitForTimeout(2000 + Math.random() * 1000);
-
-      // Accept any consent dialogs
-      await this.handleConsentDialogs(page);
-
-      // Random scrolling behavior
-      await page.evaluate(() => {
-        window.scrollBy(0, 300 + Math.random() * 400);
-      });
-
-      // Wait a bit longer
-      await page.waitForTimeout(1000 + Math.random() * 1000);
-
-      // Log the page title to help with debugging
-      const pageTitle = await page.title();
-      logger.info(`Worker ${workerId}: Search page loaded: "${pageTitle}"`);
-
-      return true;
-    } catch (error) {
-      logger.warn(`Worker ${workerId}: Error in human-like search: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Visit a page with human-like behavior
-  async visitPageHumanLike(page, url, workerId) {
-    try {
-      await page.goto(url, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      });
-
-      // Wait for network to be idle
-      await page.waitForLoadState('networkidle').catch(() => { });
-
-      // Random scrolling
-      await page.evaluate(() => {
-        const maxScroll = Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        );
-        const scrollSteps = 5 + Math.floor(Math.random() * 5);
-        const scrollStep = maxScroll / scrollSteps;
-
-        for (let i = 1; i <= scrollSteps; i++) {
-          setTimeout(() => {
-            window.scrollTo(0, i * scrollStep);
-          }, i * 300);
-        }
-      });
-
-      // Wait for scrolling to complete
-      await page.waitForTimeout(2000);
-
-      // Accept any cookie prompts
-      await this.acceptCookies(page);
-
-      return true;
-    } catch (error) {
-      logger.warn(`Worker ${workerId}: Error visiting page: ${error.message}`);
-      throw error;
-    }
-  }
-
-  // Extract search result URLs with better targeting
-  async extractSearchResultUrls(page, domain) {
-    try {
-      return await page.evaluate((targetDomain) => {
-        // Get all links on the page
-        const allLinks = Array.from(document.querySelectorAll('a[href^="http"]'))
-          .map(a => a.href)
-          .filter(href => {
-            // Filter out search engine links and tracking URLs
-            return !href.includes('google.com') &&
-              !href.includes('bing.com') &&
-              !href.includes('duckduckgo.com') &&
-              !href.includes('youtube.com') &&
-              !href.includes('facebook.com') &&
-              !href.includes('linkedin.com') &&
-              !href.includes('twitter.com') &&
-              !href.includes('gstatic.com') &&
-              !href.includes('webcache.googleusercontent.com') &&
-              !href.includes('/search?') &&
-              !href.includes('?utm_');
-          });
-
-        // Prioritize domain-related links
-        const domainLinks = allLinks.filter(url => {
-          try {
-            return new URL(url).hostname.includes(targetDomain);
-          } catch {
-            return false;
-          }
-        });
-
-        // Prioritize contact-related links
-        const contactLinks = allLinks.filter(url =>
-          url.includes('/contact') ||
-          url.includes('/about') ||
-          url.includes('/team') ||
-          url.includes('/email') ||
-          url.includes('/get-in-touch') ||
-          url.includes('/staff')
-        );
-
-        // Combine links with priority order and remove duplicates
-        return [...new Set([...domainLinks, ...contactLinks, ...allLinks])].slice(0, 15);
-      }, domain);
-    } catch (error) {
-      logger.warn(`Error extracting search result URLs: ${error.message}`);
-      return [];
-    }
-  }
-
-  // Enhanced consent dialog handling with visual clue detection
-  async handleConsentDialogs(page) {
-    try {
-      logger.info("Checking for consent dialogs to accept");
-
-      // First try common selectors for buttons
-      const commonSelectors = [
-        // Google's consent dialogs
-        'button[aria-label="Accept all"]',
-        'button:has-text("Accept all")',
-        'button:has-text("I agree")',
-        'button:has-text("Agree")',
-        'form button[jsaction*="click"]',
-        '#L2AGLb', // Google cookie consent button ID
-
-        // Bing consent dialog
-        'button[aria-label="Accept"]',
-        'button:has-text("Accept")',
-        '#bnp_btn_accept',
-
-        // Generic consent buttons
-        'button:has-text("OK")',
-        'button:has-text("Accept cookies")',
-        '.accept-cookies',
-        '#accept-cookies',
-        '.consent-btn',
-        '.cookie-accept'
+      
+      let searchEngine = options.searchEngine || this.options.searchEngine || 'google';
+      logger.info(`Worker ${workerId}: Using ${searchEngine} to search for emails on ${domain}`);
+      
+      // Create search queries
+      const baseQueries = [
+        `site:${domain} email`,
+        `site:${domain} contact`,
+        `site:${domain} "contact us"`,
+        `site:${domain} "mailto"`,
+        `site:${domain} "email us"`,
+        `site:${domain} "get in touch"`,
+        `site:${domain}/contact email`,
+        `site:${domain}/about email`,
+        `site:${domain}/team email`
       ];
-
-      // Try clicking each selector
-      for (const selector of commonSelectors) {
+      
+      // Shuffle and select a few queries to try
+      const queries = baseQueries.sort(() => 0.5 - Math.random()).slice(0, 5);
+      logger.info(`Worker ${workerId}: Using queries: ${JSON.stringify(queries)}`);
+      
+      // Try each query until we find emails
+      for (const query of queries) {
         try {
-          const button = await page.$(selector);
-          if (button) {
-            logger.info(`Found consent button with selector: ${selector}. Clicking...`);
-            await button.click().catch(e => logger.warn(`Failed to click ${selector}: ${e.message}`));
-            await page.waitForTimeout(1000);
-            return true;
+          // Construct search URL based on engine
+          let searchUrl;
+          switch(searchEngine.toLowerCase()) {
+            case 'bing':
+              searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en`;
+              break;
+            case 'duckduckgo':
+              searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}&kl=us-en`;
+              break;
+            case 'google':
+            default:
+              searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=en`;
+              break;
           }
-        } catch (e) {
-          // Continue to next selector
+          
+          logger.info(`Worker ${workerId}: Navigating to search URL: ${searchUrl}`);
+          
+          // Navigate to search page with timeout protection
+          await Promise.race([
+            page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Navigation timeout')), 35000))
+          ]);
+          
+          // Check for consent dialogs
+          logger.info(`Checking for consent dialogs to accept`);
+          await this.acceptCookies(page);
+          
+          // Wait for page to stabilize
+          await page.waitForTimeout(2000);
+          
+          // Verify we're on a search page
+          const pageTitle = await page.title();
+          logger.info(`Worker ${workerId}: Search page loaded: "${pageTitle}"`);
+          
+          // Extract emails from search results
+          const emails = await this.extractEmailsFromSearchResults(page, domain, workerId);
+          
+          if (emails && emails.length > 0) {
+            logger.info(`Worker ${workerId}: ✓ Found email in search results: ${emails[0]}`);
+            
+            // Close the page
+            await page.close().catch(() => {});
+            
+            return emails;
+          }
+          
+          // Small delay between searches (fix this to use the added randomDelay method)
+          await this.randomDelay(1000, 2000);
+        } catch (searchError) {
+          logger.warn(`Worker ${workerId}: Error searching with query "${query}": ${searchError.message}`);
+          continue; // Try next query
         }
       }
-
-      // Try to find elements that LOOK like consent dialogs based on visual clues
-      const foundConsentDialog = await page.evaluate(() => {
-        // Helper to check if an element is visible
-        const isVisible = (el) => {
-          if (!el) return false;
-          const style = window.getComputedStyle(el);
-          return style.display !== 'none' &&
-            style.visibility !== 'hidden' &&
-            style.opacity !== '0' &&
-            el.offsetWidth > 0 &&
-            el.offsetHeight > 0;
-        };
-
-        // Look for elements that might be consent dialogs based on common patterns
-        const consentKeywords = [
-          'consent', 'cookie', 'gdpr', 'accept', 'privacy',
-          'we use cookies', 'data policy', 'agree'
-        ];
-
-        // First look for visible fixed position elements (often overlays)
-        const possibleDialogs = Array.from(document.querySelectorAll('div[class*="consent"], div[class*="cookie"], div[class*="notice"], div[class*="banner"], div[class*="popup"], div[class*="modal"], div[id*="consent"], div[id*="cookie"]'))
-          .filter(el => {
-            const style = window.getComputedStyle(el);
-            return isVisible(el) && (
-              style.position === 'fixed' ||
-              style.position === 'absolute'
-            );
-          });
-
-        // Check if any of these elements contain consent keywords
-        for (const dialog of possibleDialogs) {
-          const text = dialog.textContent.toLowerCase();
-
-          if (consentKeywords.some(keyword => text.includes(keyword))) {
-            // Found a likely consent dialog, now look for buttons inside it
-            const buttons = Array.from(dialog.querySelectorAll('button, a.button, a[class*="btn"], input[type="button"], input[type="submit"]'));
-
-            // Try to find the accept button by looking at button text
-            for (const button of buttons) {
-              const buttonText = button.textContent.toLowerCase().trim();
-
-              if (buttonText.includes('accept') ||
-                buttonText.includes('agree') ||
-                buttonText.includes('ok') ||
-                buttonText.includes('yes')) {
-
-                // This looks like an accept button - click it
-                button.click();
-                return true;
-              }
-            }
-
-            // If we can't find a specific accept button, just click the first button
-            if (buttons.length > 0) {
-              buttons[0].click();
-              return true;
-            }
-          }
-        }
-
-        return false;
-      });
-
-      if (foundConsentDialog) {
-        logger.info("Found and clicked consent dialog through visual detection");
-        await page.waitForTimeout(1000);
-        return true;
-      }
-
-      return false;
+      
+      // Close the page when done
+      await page.close().catch(() => {});
+      
+      logger.info(`Worker ${workerId}: No emails found using ${searchEngine} search for ${domain}`);
+      return [];
     } catch (error) {
-      logger.warn(`Error handling consent dialogs: ${error.message}`);
-      return false;
-    }
-  }
-
-  // Enhanced saveEmailToDatabase method for more reliable database updates
-  async saveEmailToDatabase(businessId, email, allEmails) {
-    if (!businessId || !email) {
-      logger.error(`Cannot save email to database: Missing businessId=${businessId} or email=${email}`);
-      return false;
-    }
-
-    // Log details for debugging
-    logger.info(`Saving email "${email}" to database for business ID "${businessId}" (type: ${typeof businessId})`);
-
-    // Convert businessId to number if it's a string containing a number
-    const processedId = typeof businessId === 'string' && !isNaN(businessId) ?
-      parseInt(businessId, 10) : businessId;
-
-    // Log the processed ID
-    if (processedId !== businessId) {
-      logger.info(`Converted businessId from string "${businessId}" to number ${processedId}`);
-    }
-
-    const maxRetries = 2;
-    let retryCount = 0;
-    let success = false;
-
-    while (!success && retryCount <= maxRetries) {
-      try {
-        // First attempt to use direct db.query for most reliable operation
-        const result = await db.query(
-          `UPDATE business_listings 
-           SET email = $1, 
-               notes = CASE 
-                  WHEN notes IS NULL OR notes = '' THEN 'Email found: ' || $2
-                  ELSE notes || ' | Email found: ' || $2
-               END,
-               updated_at = NOW() 
-           WHERE id = $3
-           RETURNING id, name`,
-          [email, allEmails || email, processedId]
-        );
-
-        // Check if any rows were actually updated
-        if (!result || result.rowCount === 0) {
-          logger.warn(`No rows updated in business_listings for ID ${processedId}. Business may not exist.`);
-
-          // Try the original ID if conversion was done
-          if (processedId !== businessId) {
-            logger.info(`Trying with original businessId format: ${businessId}`);
-
-            const retryResult = await db.query(
-              `UPDATE business_listings 
-               SET email = $1, 
-                   notes = CASE 
-                      WHEN notes IS NULL OR notes = '' THEN 'Email found: ' || $2
-                      ELSE notes || ' | Email found: ' || $2
-                   END,
-                   updated_at = NOW() 
-               WHERE id = $3
-               RETURNING id, name`,
-              [email, allEmails || email, businessId]
-            );
-
-            if (retryResult && retryResult.rowCount > 0) {
-              const businessName = retryResult.rows[0]?.name || 'Unknown';
-              logger.info(`Successfully updated business "${businessName}" (ID: ${businessId}) with email ${email}`);
-              success = true;
-
-              // Also try to update legacy businesses table
-              try {
-                await db.query(
-                  `UPDATE businesses SET email = $1 WHERE id = $2`,
-                  [email, businessId]
-                );
-              } catch (legacyError) {
-                logger.warn(`Could not update legacy businesses table: ${legacyError.message}`);
-              }
-
-              return true;
-            } else {
-              throw new Error(`Business with ID ${businessId} not found in database`);
-            }
-          } else {
-            throw new Error(`Business with ID ${processedId} not found in database`);
-          }
-        } else {
-          const businessName = result.rows[0]?.name || 'Unknown';
-          logger.info(`Successfully updated business "${businessName}" (ID: ${processedId}) with email ${email}`);
-
-          // Also update legacy businesses table if it exists
-          try {
-            await db.query(
-              `UPDATE businesses SET email = $1 WHERE id = $2`,
-              [email, processedId]
-            );
-            logger.info(`Also updated legacy businesses table for ID ${processedId}`);
-          } catch (legacyError) {
-            // Just log but don't treat as failure - legacy table is optional
-            logger.warn(`Could not update legacy businesses table: ${legacyError.message}`);
-          }
-
-          success = true;
-          return true;
-        }
-      } catch (error) {
-        retryCount++;
-        logger.error(`Error saving email to database (attempt ${retryCount}/${maxRetries + 1}): ${error.message}`);
-        logger.error(`Stack trace: ${error.stack}`);
-
-        // Try to get database connection status
-        try {
-          const isConnected = await db.testConnection();
-          logger.info(`Database connection test: ${isConnected ? 'CONNECTED' : 'FAILED'}`);
-        } catch (dbError) {
-          logger.error(`Database connection test error: ${dbError.message}`);
-        }
-
-        if (retryCount <= maxRetries) {
-          // Wait before retrying with exponential backoff
-          const backoffDelay = 1000 * Math.pow(2, retryCount - 1);
-          logger.info(`Retrying database update in ${backoffDelay}ms`);
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
-        }
-      }
-    }
-
-    // If we get here, all retries failed
-    logger.error(`Failed to save email ${email} for business ID ${businessId} after ${maxRetries + 1} attempts`);
-    return false;
-  }
-
-  // Save email to database
-  async saveEmailToDatabase(businessId, email, allEmails) {
-    if (!businessId || !email) {
-      logger.warn(`Cannot save email to database: Missing businessId or email value`);
-      return false;
-    }
-
-    const maxRetries = 2;
-    let retryCount = 0;
-    let success = false;
-
-    while (!success && retryCount <= maxRetries) {
-      try {
-        // First update the main business_listings table
-        await db.query(
-          `UPDATE business_listings 
-           SET email = $1, 
-               notes = CASE 
-                  WHEN notes IS NULL OR notes = '' THEN 'Other emails: ' || $2
-                  ELSE notes || ' | Other emails: ' || $2
-               END,
-               updated_at = NOW() 
-           WHERE id = $3`,
-          [email, allEmails || email, businessId]
-        );
-
-        // Then try to update the legacy businesses table if it exists
-        try {
-          const legacyResult = await db.query(
-            `UPDATE businesses 
-             SET email = $1 
-             WHERE id = $2
-             RETURNING id`,
-            [email, businessId]
-          );
-
-          // Log successful update to legacy table if any rows were affected
-          if (legacyResult.rowCount > 0) {
-            logger.info(`Updated email in legacy businesses table for ID ${businessId}`);
-          }
-        } catch (legacyError) {
-          // Just log but don't treat as failure - legacy table is optional
-          logger.warn(`Could not update legacy businesses table: ${legacyError.message}`);
-        }
-
-        logger.info(`Successfully saved email ${email} for business ID ${businessId}`);
-        success = true;
-        return true;
-      } catch (error) {
-        retryCount++;
-        logger.error(`Error saving email to database (attempt ${retryCount}/${maxRetries + 1}): ${error.message}`);
-
-        if (retryCount <= maxRetries) {
-          // Wait before retrying with exponential backoff
-          const backoffDelay = 1000 * Math.pow(2, retryCount - 1);
-          logger.info(`Retrying database update in ${backoffDelay}ms`);
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
-        }
-      }
-    }
-
-    return success;
-  }
-
-  // Utility function to validate email format
-  isValidEmail(email) {
-    if (!email) return false;
-
-    // Expanded basic validation
-    const valid = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
-    if (!valid) return false;
-
-    // Filter suspicious domains and patterns
-    const suspiciousPatterns = [
-      /example\./i,
-      /test(@|\.)/i,
-      /placeholder/i,
-      /noreply/i,
-      /no-reply/i,
-      /donotreply/i,
-      /yourname/i,
-      /youremail/i,
-      /yourdomain/i,
-      /someone@/i,
-      /user@/i,
-      /email@email/i,
-      /email@domain/i,
-      /sample@/i,
-      /demo@/i
-    ];
-
-    // Check if email matches any suspicious pattern
-    if (suspiciousPatterns.some(pattern => pattern.test(email))) {
-      return false;
-    }
-
-    // Check for obviously fake TLDs
-    const fakeTlds = /\.(test|example|invalid|localhost|local)$/i;
-    if (fakeTlds.test(email)) {
-      return false;
-    }
-
-    return true;
-  }
-
-  // Add random delay to appear more human-like
-  async randomDelay(min, max) {
-    const delay = Math.floor(min + Math.random() * (max - min));
-    await new Promise(resolve => setTimeout(resolve, delay));
-  }
-
-  // Sanitize filename for screenshots
-  sanitizeFilename(url) {
-    try {
-      const domain = new URL(url).hostname;
-      return domain.replace(/[^\w.-]/g, '_');
-    } catch (e) {
-      return url.replace(/[^\w.-]/g, '_').substring(0, 50);
+      logger.error(`Worker ${workerId}: Error in search engine discovery: ${error.message}`);
+      return [];
     }
   }
 
@@ -1923,7 +1406,7 @@ class EmailFinder {
       const cleanDomain = domain.replace(/^www\./, '').split('.').slice(-2).join('.');
 
       // Create a regex specifically for this domain
-      const domainRegex = new RegExp(`\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]*${cleanDomain.replace('.', '\\.')}\\b`, 'gi');
+      const domainRegex = new RegExp(`\\b[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9.-]*\\.)?${cleanDomain.replace('.', '\\.')}\\b`, 'gi');
 
       // Get page content and extract domain-specific emails
       const pageContent = await page.content();
@@ -2351,44 +1834,62 @@ class EmailFinder {
       // Create tracking for high confidence sources
       this.lastExtractedEmailSources = new Map();
 
-      // Extract domain from website
+      // Extract domain from website with better handling of different formats
       let domain;
       try {
+        // Handle various website input formats
+        website = website.trim();
+        if (!website.startsWith('http')) {
+          website = `https://${website}`;
+        }
+        
         domain = new URL(website).hostname.replace(/^www\./, '');
       } catch (err) {
-        domain = website;
+        // Handle cases where website might just be a domain
+        domain = website.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0];
+        website = `https://${domain}`;
       }
 
-      // IMPORTANT: Track the business ID if provided in options (for database updates)
-      // Log the businessId in detail to help diagnose issues
-      const businessId = options.businessId || null;
-      const saveToDatabase = options.saveToDatabase !== false;
-
-      // Log the key parameters for debugging
-      logger.info(`Looking for email with businessId=${businessId} (${typeof businessId}), saveToDatabase=${saveToDatabase}`);
+      // Process all possible business ID field names to ensure compatibility
+      const businessId = options.businessId || options.id || options.business_id || null;
+      
+      // Log the key parameters for debugging with clearer information
+      const logPrefix = '🔍 EMAIL FINDER: ';
+      logger.info(`${logPrefix}Looking for email on ${website} with businessId=${businessId !== null ? businessId : 'not provided'}`);
 
       // Log any ID conversion happening
       if (businessId !== null && typeof businessId === 'string' && !isNaN(businessId)) {
-        logger.info(`Business ID is a numeric string: "${businessId}" - will convert to number when saving`);
+        logger.info(`${logPrefix}Business ID is a numeric string: "${businessId}" - will convert to number when saving`);
       }
 
-      // FIRST STRATEGY: Try the main website
+      // Determine if we should save to database
+      // We'll save if saveToDatabase is true (default) AND we have a businessId
+      const shouldSaveToDb = (options.saveToDatabase !== false) && (businessId !== null);
+      
+      logger.info(`${logPrefix}Will ${shouldSaveToDb ? '' : 'NOT '}save to database. saveToDatabase=${options.saveToDatabase !== false}, businessId=${businessId !== null ? businessId : 'not provided'}`);
+
+      // STRATEGY 1: Try the main website directly
+      logger.info(`${logPrefix}STRATEGY 1: Checking main website ${website}`);
       let emails = await this.extractEmailsFromWebsite(website, {
         ...this.options,
         generateArtificialEmails: false, // Explicitly disable any generation
         useSearchEngines: false, // Don't use search engines yet
+        businessId, // Pass businessId to make it available during extraction
+        saveToDatabase: shouldSaveToDb, // Pass save preference based on our determination
         ...options
       }, 0);
 
       // Process and validate found emails
       if (emails && emails.length > 0) {
-        logger.info(`Found ${emails.length} potential emails on main website`);
+        logger.info(`${logPrefix}Found ${emails.length} emails on main website: ${emails.join(', ')}`);
         this.lastExtractedEmailSources.set(emails[0].toLowerCase(), 'Main website');
       } else {
-        logger.info(`No emails found on main website for ${website}, trying contact pages`);
+        logger.info(`${logPrefix}No emails found on main website, trying contact pages`);
 
-        // SECOND STRATEGY: Try common contact pages
+        // STRATEGY 2: Try common contact pages - EXPANDED with more variations
         if (domain) {
+          logger.info(`${logPrefix}STRATEGY 2: Checking contact pages for ${domain}`);
+          
           // Clean domain for contact page URLs
           let cleanDomain = domain;
 
@@ -2401,39 +1902,82 @@ class EmailFinder {
           // Remove any paths or trailing slashes
           cleanDomain = cleanDomain.split('/')[0];
 
-          logger.info(`Trying contact pages for domain: ${cleanDomain}`);
+          logger.info(`${logPrefix}Trying contact pages for domain: ${cleanDomain}`);
 
-          // Common contact page URLs
+          // EXPANDED: Common contact page URLs with many more variations
           const contactUrls = [
+            // Standard paths
             `https://${cleanDomain}/contact`,
             `https://${cleanDomain}/contact-us`,
             `https://${cleanDomain}/about-us`,
+            `https://${cleanDomain}/about`,
             `https://www.${cleanDomain}/contact`,
+            `https://www.${cleanDomain}/contact-us`,
+            
+            // Business support pages
             `https://${cleanDomain}/support`,
             `https://${cleanDomain}/help`,
+            `https://${cleanDomain}/customer-support`,
+            `https://${cleanDomain}/customer-service`,
+            
+            // Team/About pages
             `https://${cleanDomain}/team`,
-            `https://${cleanDomain}/company/contact`
+            `https://${cleanDomain}/staff`,
+            `https://${cleanDomain}/our-team`, 
+            `https://${cleanDomain}/about/team`,
+            `https://${cleanDomain}/company/team`,
+            
+            // Company/Info pages
+            `https://${cleanDomain}/info`,
+            `https://${cleanDomain}/information`,
+            `https://${cleanDomain}/company`,
+            `https://${cleanDomain}/company/contact`,
+            `https://${cleanDomain}/company/about`,
+            
+            // Connect/Reach pages
+            `https://${cleanDomain}/get-in-touch`,
+            `https://${cleanDomain}/reach-us`, 
+            `https://${cleanDomain}/connect`,
+            `https://${cleanDomain}/write-to-us`,
+            
+            // International variations
+            `https://${cleanDomain}/contacto`, // Spanish
+            `https://${cleanDomain}/kontakt`,  // German
+            
+            // Other common paths
+            `https://${cleanDomain}/directory`,
+            `https://${cleanDomain}/email-us`,
+            `https://${cleanDomain}/locations`,
+            `https://${cleanDomain}/offices`
           ];
 
           // Process contact URLs with error handling
-          const contactEmails = await this.processContactUrls(contactUrls, domain, options, 0);
+          const contactEmails = await this.processContactUrls(contactUrls, domain, {
+            ...options,
+            businessId, // Make sure to pass the businessId
+            saveToDatabase: shouldSaveToDb // Use our determination
+          }, 0);
 
           if (contactEmails && contactEmails.length > 0) {
-            logger.info(`Found ${contactEmails.length} emails on contact pages`);
+            logger.info(`${logPrefix}Found ${contactEmails.length} emails on contact pages: ${contactEmails.join(', ')}`);
             emails = contactEmails;
             this.lastExtractedEmailSources.set(contactEmails[0].toLowerCase(), 'Contact page');
           }
         }
 
-        // THIRD STRATEGY: Use search engines if enabled and still no emails
+        // STRATEGY 3: Use search engines - properly passing businessId
         if ((!emails || emails.length === 0) &&
           (options.useSearchEngines || this.options.useSearchEngines)) {
-          logger.info(`No emails found in website, trying search engine discovery for ${domain}`);
+          logger.info(`${logPrefix}STRATEGY 3: Using search engine discovery for ${domain}`);
 
-          const searchEngineEmails = await this.searchEngineEmailDiscovery(domain, options, 0);
+          const searchEngineEmails = await this.searchEngineEmailDiscovery(domain, {
+            ...options, 
+            businessId,  // Pass businessId explicitly for direct database updates
+            saveToDatabase: shouldSaveToDb // Use our determination
+          }, 0);
 
           if (searchEngineEmails && searchEngineEmails.length > 0) {
-            logger.info(`Found ${searchEngineEmails.length} emails using search engines`);
+            logger.info(`${logPrefix}Found ${searchEngineEmails.length} emails using search engines: ${searchEngineEmails.join(', ')}`);
             emails = searchEngineEmails;
             this.lastExtractedEmailSources.set(searchEngineEmails[0].toLowerCase(), 'Search engine');
           }
@@ -2447,19 +1991,20 @@ class EmailFinder {
 
         if (validatedEmails.length > 0) {
           const bestEmail = validatedEmails[0]; // Take the highest priority email
+          logger.info(`${logPrefix}Best email found for ${website}: ${bestEmail}`);
 
-          // Save to database if requested and business ID provided - add more detail
-          if (saveToDatabase && businessId) {
-            logger.info(`Found email ${bestEmail} for business ID ${businessId}, saving to database...`);
+          // Save to database if we determined we should
+          if (shouldSaveToDb) {
+            logger.info(`${logPrefix}Saving email ${bestEmail} for business ID ${businessId}`);
             const saveResult = await this.saveEmailToDatabase(businessId, bestEmail, validatedEmails.join(', '));
 
             if (saveResult) {
-              logger.info(`✅ Successfully saved email ${bestEmail} to database for business ID ${businessId}`);
+              logger.info(`${logPrefix}✓ Successfully saved email ${bestEmail} for business ID ${businessId}`);
             } else {
-              logger.error(`❌ Failed to save email ${bestEmail} to database for business ID ${businessId}`);
+              logger.error(`${logPrefix}⚠️ Failed to save email ${bestEmail} for business ID ${businessId}`);
             }
           } else {
-            logger.info(`Not saving to database: saveToDatabase=${saveToDatabase}, businessId=${businessId || 'not provided'}`);
+            logger.info(`${logPrefix}Not saving to database: saveToDatabase=${options.saveToDatabase !== false}, businessId=${businessId !== null ? businessId : 'not provided'}`);
           }
 
           // Return the email
@@ -2467,7 +2012,7 @@ class EmailFinder {
         }
       }
 
-      logger.info(`No valid emails found for ${website}`);
+      logger.info(`${logPrefix}No valid emails found for ${website}`);
       return null;
     } catch (error) {
       logger.error(`Error finding email for ${website}: ${error.message}`);
@@ -2606,6 +2151,648 @@ class EmailFinder {
     } catch (error) {
       logger.warn(`Error accepting cookies: ${error.message}`);
       return false;
+    }
+  }
+
+  // Extract emails from search results with emphasis on <em> tags
+  async extractEmailsFromSearchResults(page, domain, workerId = 0) {
+    try {
+      // Log the action for debugging
+      logger.info(`Worker ${workerId}: Extracting emails from search results for ${domain}`);
+      
+      // Take a screenshot for debugging if enabled
+      if (this.options.takeScreenshots) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = path.join(this.debugDir, `search-results-${domain}-${timestamp}.png`);
+        await page.screenshot({ path: filename, fullPage: true })
+          .catch(e => logger.warn(`Screenshot error: ${e.message}`));
+        logger.info(`Worker ${workerId}: Saved search results screenshot to ${filename}`);
+      }
+
+      // First look specifically for emails in <em> tags as requested
+      const emailsInEmphasis = await page.evaluate((domainToCheck) => {
+        console.log('Searching <em> tags and other highlighted elements for emails');
+        
+        const results = new Set();
+        
+        // Function to extract emails from text
+        const extractEmailsFromText = (text) => {
+          const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+          const matches = text.match(emailRegex);
+          
+          if (matches) {
+            console.log(`Found emails: ${matches.join(', ')}`);
+            matches.forEach(email => results.add(email.toLowerCase()));
+          }
+        };
+        
+        // 1. FIRST PRIORITY: Find all <em> tags that might contain emails
+        const emphasisElements = document.querySelectorAll('em');
+        console.log(`Found ${emphasisElements.length} <em> elements`);
+        
+        // Extract content from each <em> tag
+        for (const elem of emphasisElements) {
+          const text = elem.textContent || '';
+          console.log(`<em> content: "${text}"`);
+          extractEmailsFromText(text);
+        }
+
+        // 2. SECOND PRIORITY: Check other highlighting elements often used in search results
+        const highlightElements = document.querySelectorAll('strong, b, .highlight, span[style*="bold"], span[class*="highlight"]');
+        console.log(`Found ${highlightElements.length} highlighted elements`);
+        
+        for (const elem of highlightElements) {
+          const text = elem.textContent || '';
+          extractEmailsFromText(text);
+        }
+        
+        // 3. THIRD PRIORITY: Check elements that might contain text near or including emails
+        const potentialContainers = document.querySelectorAll('cite, .cite, .url, .visurl, .urlStr');
+        console.log(`Found ${potentialContainers.length} potential URL/citation containers`);
+        
+        for (const elem of potentialContainers) {
+          const text = elem.textContent || '';
+          extractEmailsFromText(text);
+        }
+        
+        // 4. FOURTH PRIORITY: Check text snippets in search results
+        const snippets = document.querySelectorAll('.snippet, .description, .abstract, .content, .s');
+        console.log(`Found ${snippets.length} text snippets`);
+        
+        for (const elem of snippets) {
+          const text = elem.textContent || '';
+          extractEmailsFromText(text);
+        }
+        
+        // Return the found emails as an array
+        return Array.from(results);
+      }, domain.replace(/^www\./, ''));
+      
+      // If we found emails in <em> or other tags, log and filter them
+      if (emailsInEmphasis && emailsInEmphasis.length > 0) {
+        // Filter out search engine error emails and apply domain relevance check
+        const filteredEmails = emailsInEmphasis
+          .filter(email => this.isValidEmail(email))
+          .filter(email => this.emailMatchesDomain(email, domain));
+        
+        if (filteredEmails.length > 0) {
+          logger.info(`Worker ${workerId}: Found ${filteredEmails.length} valid emails in emphasized/highlighted elements: ${filteredEmails.join(', ')}`);
+          
+          // Save source information for each email found
+          filteredEmails.forEach(email => {
+            if (this.lastExtractedEmailSources) {
+              this.lastExtractedEmailSources.set(email.toLowerCase(), 'search result emphasis');
+            }
+          });
+          
+          return filteredEmails;
+        } else {
+          logger.info(`Worker ${workerId}: Found ${emailsInEmphasis.length} emails but all were filtered out as invalid or unrelated to the domain`);
+        }
+      }
+      
+      // If still no emails found, try the full page content
+      logger.info(`Worker ${workerId}: No valid emails found in emphasized elements, checking full page content`);
+      
+      // Get both HTML content and plain text
+      const pageContent = await page.content();
+      const bodyText = await page.evaluate(() => document.body.innerText);
+      
+      // Look for emails in the page content
+      let emails = this.extractEmailsFromText(pageContent, bodyText, domain);
+      
+      // Filter out search engine error emails
+      emails = emails.filter(email => 
+        this.isValidEmail(email) && this.emailMatchesDomain(email, domain)
+      );
+      
+      if (emails.length > 0) {
+        logger.info(`Worker ${workerId}: Found ${emails.length} valid emails in page content: ${emails.join(', ')}`);
+      } else {
+        logger.info(`Worker ${workerId}: No valid emails found in search results for ${domain}`);
+      }
+      
+      return emails;
+    } catch (error) {
+      logger.error(`Worker ${workerId}: Error extracting emails from search results: ${error.message}`);
+      return [];
+    }
+  }
+
+  // Enhanced saveEmailToDatabase method for more reliable database updates
+  async saveEmailToDatabase(businessId, email, allEmails) {
+    if (!businessId || !email) {
+      logger.error(`Cannot save email to database: Missing businessId=${businessId} or email=${email}`);
+      return false;
+    }
+
+    // Log details for debugging - use eye-catching formatting for database operations
+    const logPrefix = '📝 DATABASE: ';
+    logger.info(`${logPrefix}Saving email "${email}" for business ID ${businessId} (${typeof businessId})`);
+
+    // Convert businessId to number if it's a string containing a number
+    const processedId = typeof businessId === 'string' && !isNaN(businessId) ?
+      parseInt(businessId, 10) : businessId;
+
+    // Log the processed ID
+    if (processedId !== businessId) {
+      logger.info(`${logPrefix}Converted businessId from string "${businessId}" to number ${processedId}`);
+    }
+
+    // Initialize database if needed
+    if (db.init && typeof db.init === 'function') {
+      try {
+        await db.init();
+        logger.info(`${logPrefix}Database initialization successful`);
+      } catch (initError) {
+        logger.warn(`${logPrefix}Database initialization error: ${initError.message} (continuing anyway)`);
+      }
+    }
+
+    // Explicitly test database connection before attempting update
+    try {
+      const isConnected = await db.testConnection();
+      logger.info(`${logPrefix}Database connection test before save: ${isConnected ? 'CONNECTED' : 'FAILED'}`);
+      
+      if (!isConnected) {
+        logger.error(`${logPrefix}Database connection test failed, cannot save email for business ${processedId}`);
+        return false;
+      }
+    } catch (testError) {
+      logger.error(`${logPrefix}Error testing database connection: ${testError.message}`);
+    }
+
+    const maxRetries = 3; // Increase retries for more reliability
+    let retryCount = 0;
+    let success = false;
+
+    while (!success && retryCount <= maxRetries) {
+      try {
+        // First attempt with processed ID
+        const queryText = `
+          UPDATE business_listings 
+          SET email = $1, 
+              notes = CASE 
+                WHEN notes IS NULL OR notes = '' THEN 'Email found: ' || $2
+                ELSE notes || ' | Email found: ' || $2
+              END,
+              updated_at = NOW() 
+          WHERE id = $3
+          RETURNING id, name, email`;
+          
+        const result = await db.query(queryText, [email, allEmails || email, processedId]);
+
+        // Check if any rows were actually updated
+        if (!result || result.rowCount === 0) {
+          logger.warn(`${logPrefix}No rows updated in business_listings for ID ${processedId}. Business may not exist.`);
+
+          // Try the original ID if conversion was done
+          if (processedId !== businessId) {
+            logger.info(`${logPrefix}Trying with original businessId format: ${businessId}`);
+
+            // Try with the original format
+            const retryResult = await db.query(queryText, [email, allEmails || email, businessId]);
+
+            if (retryResult && retryResult.rowCount > 0) {
+              const businessName = retryResult.rows[0]?.name || 'Unknown';
+              const savedEmail = retryResult.rows[0]?.email || 'Unknown';
+              logger.info(`${logPrefix}✓ Successfully updated business "${businessName}" (ID: ${businessId}) with email ${savedEmail}`);
+              success = true;
+
+              // Also try to update legacy businesses table
+              try {
+                await db.query(
+                  `UPDATE businesses SET email = $1 WHERE id = $2`,
+                  [email, businessId]
+                );
+              } catch (legacyError) {
+                logger.warn(`${logPrefix}Could not update legacy businesses table: ${legacyError.message}`);
+              }
+
+              return true;
+            } 
+          }
+
+          // Try a different approach - verify if the business exists first
+          const checkResult = await db.getOne(
+            `SELECT id, name FROM business_listings WHERE id = $1`,
+            [processedId === businessId ? businessId : processedId]
+          );
+
+          if (!checkResult) {
+            logger.error(`${logPrefix}Business with ID ${processedId} not found in database. Email save failed.`);
+            throw new Error(`Business with ID ${processedId} not found in database`);
+          } else {
+            // The business exists but the update didn't affect any rows - try INSERT or alternative update
+            logger.warn(`${logPrefix}Business found but update didn't work. Trying alternative update method.`);
+            
+            // Try a direct field-by-field update without text concatenation
+            const alternativeResult = await db.query(
+              `UPDATE business_listings 
+               SET email = $1, updated_at = NOW() 
+               WHERE id = $2
+               RETURNING id, name`,
+              [email, processedId]
+            );
+            
+            if (alternativeResult && alternativeResult.rowCount > 0) {
+              const businessName = alternativeResult.rows[0]?.name || 'Unknown';
+              logger.info(`${logPrefix}✓ Successfully updated business "${businessName}" (ID: ${processedId}) with email ${email} using alternative method`);
+              success = true;
+              return true;
+            } else {
+              throw new Error(`Alternative update failed for business ID ${processedId}`);
+            }
+          }
+        } else {
+          // Update was successful
+          const businessName = result.rows[0]?.name || 'Unknown';
+          const savedEmail = result.rows[0]?.email || 'Unknown';
+          logger.info(`${logPrefix}✓ Successfully updated business "${businessName}" (ID: ${processedId}) with email ${savedEmail}`);
+
+          // Also update legacy businesses table if it exists
+          try {
+            await db.query(
+              `UPDATE businesses SET email = $1 WHERE id = $2`,
+              [email, processedId]
+            );
+            logger.info(`${logPrefix}✓ Also updated legacy businesses table for ID ${processedId}`);
+          } catch (legacyError) {
+            // Just log but don't treat as failure - legacy table is optional
+            logger.warn(`${logPrefix}Could not update legacy businesses table: ${legacyError.message}`);
+          }
+
+          success = true;
+          return true;
+        }
+      } catch (error) {
+        retryCount++;
+        logger.error(`${logPrefix}Error saving email to database (attempt ${retryCount}/${maxRetries + 1}): ${error.message}`);
+
+        // Try to get database connection status
+        try {
+          const isConnected = await db.testConnection();
+          logger.info(`${logPrefix}Database connection test: ${isConnected ? 'CONNECTED' : 'FAILED'}`);
+        } catch (dbError) {
+          logger.error(`${logPrefix}Database connection test error: ${dbError.message}`);
+        }
+
+        if (retryCount <= maxRetries) {
+          // Wait before retrying with exponential backoff
+          const backoffDelay = 1000 * Math.pow(2, retryCount - 1);
+          logger.info(`${logPrefix}Retrying database update in ${backoffDelay}ms`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        }
+      }
+    }
+
+    // If we get here, all retries failed
+    logger.error(`${logPrefix}⚠️ Failed to save email ${email} for business ID ${businessId} after ${maxRetries + 1} attempts`);
+    return false;
+  }
+
+  // Utility function to validate email format with improved filtering
+  isValidEmail(email) {
+    if (!email) return false;
+
+    // Expanded basic validation
+    const valid = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+    if (!valid) return false;
+
+    // Filter suspicious domains and patterns
+    const suspiciousPatterns = [
+      /example\./i,
+      /test(@|\.)/i,
+      /placeholder/i,
+      /noreply/i,
+      /no-reply/i,
+      /donotreply/i,
+      /yourname/i,
+      /youremail/i,
+      /yourdomain/i,
+      /someone@/i,
+      /user@/i,
+      /email@email/i,
+      /email@domain/i,
+      /sample@/i,
+      /demo@/i,
+      // New: Add search engine error email patterns
+      /error\+[a-z0-9]+@duckduckgo\.com/i,
+      /alert@google\.com/i,
+      /do-not-reply@/i,
+      /search@/i,
+      /automated@/i,
+      /webmaster@/i,
+      /error@/i
+    ];
+
+    // Check if email matches any suspicious pattern
+    if (suspiciousPatterns.some(pattern => pattern.test(email))) {
+      return false;
+    }
+
+    // Check for obviously fake TLDs
+    const fakeTlds = /\.(test|example|invalid|localhost|local)$/i;
+    if (fakeTlds.test(email)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  // NEW METHOD: Check if an email belongs to or is relevant to target domain
+  emailMatchesDomain(email, domain) {
+    if (!email || !domain) return false;
+    
+    // Clean up domain (remove www, protocol, etc.)
+    const cleanDomain = domain.replace(/^www\./i, '').replace(/^https?:\/\//i, '').split('/')[0];
+    
+    // Get the base domain name (e.g., "example" from "example.com")
+    const baseDomain = cleanDomain.split('.')[0];
+    
+    // Get the email domain
+    const emailDomain = email.split('@')[1];
+    
+    // Direct domain match is best
+    if (emailDomain === cleanDomain) return true;
+    
+    // If email domain contains the base domain name, it's likely related
+    // (e.g., info@mail.example.com for example.com)
+    if (emailDomain && emailDomain.includes(baseDomain)) return true;
+    
+    // For some search engine results, we want to be extra cautious
+    if (emailDomain) {
+      // Detect search engine domains and reject them
+      const searchEngineDomains = [
+        'google.com', 'googlemail.com', 'bing.com', 'duckduckgo.com', 
+        'yahoo.com', 'baidu.com', 'yandex.com', 'search.com'
+      ];
+      
+      if (searchEngineDomains.some(seDomain => emailDomain.includes(seDomain))) {
+        // This is an email from a search engine, likely an error or notification
+        return false;
+      }
+    }
+    
+    // Otherwise, default to accepting if it passes other validation
+    return true;
+  }
+
+  // Extract emails from search results with emphasis on <em> tags
+  async extractEmailsFromSearchResults(page, domain, workerId = 0) {
+    try {
+      // Log the action for debugging
+      logger.info(`Worker ${workerId}: Extracting emails from search results for ${domain}`);
+      
+      // Take a screenshot for debugging if enabled
+      if (this.options.takeScreenshots) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = path.join(this.debugDir, `search-results-${domain}-${timestamp}.png`);
+        await page.screenshot({ path: filename, fullPage: true })
+          .catch(e => logger.warn(`Screenshot error: ${e.message}`));
+        logger.info(`Worker ${workerId}: Saved search results screenshot to ${filename}`);
+      }
+
+      // First look specifically for emails in <em> tags as requested
+      const emailsInEmphasis = await page.evaluate((domainToCheck) => {
+        console.log('Searching <em> tags and other highlighted elements for emails');
+        
+        const results = new Set();
+        
+        // Function to extract emails from text
+        const extractEmailsFromText = (text) => {
+          const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+          const matches = text.match(emailRegex);
+          
+          if (matches) {
+            console.log(`Found emails: ${matches.join(', ')}`);
+            matches.forEach(email => results.add(email.toLowerCase()));
+          }
+        };
+        
+        // 1. FIRST PRIORITY: Find all <em> tags that might contain emails
+        const emphasisElements = document.querySelectorAll('em');
+        console.log(`Found ${emphasisElements.length} <em> elements`);
+        
+        // Extract content from each <em> tag
+        for (const elem of emphasisElements) {
+          const text = elem.textContent || '';
+          console.log(`<em> content: "${text}"`);
+          extractEmailsFromText(text);
+        }
+
+        // 2. SECOND PRIORITY: Check other highlighting elements often used in search results
+        const highlightElements = document.querySelectorAll('strong, b, .highlight, span[style*="bold"], span[class*="highlight"]');
+        console.log(`Found ${highlightElements.length} highlighted elements`);
+        
+        for (const elem of highlightElements) {
+          const text = elem.textContent || '';
+          extractEmailsFromText(text);
+        }
+        
+        // 3. THIRD PRIORITY: Check elements that might contain text near or including emails
+        const potentialContainers = document.querySelectorAll('cite, .cite, .url, .visurl, .urlStr');
+        console.log(`Found ${potentialContainers.length} potential URL/citation containers`);
+        
+        for (const elem of potentialContainers) {
+          const text = elem.textContent || '';
+          extractEmailsFromText(text);
+        }
+        
+        // 4. FOURTH PRIORITY: Check text snippets in search results
+        const snippets = document.querySelectorAll('.snippet, .description, .abstract, .content, .s');
+        console.log(`Found ${snippets.length} text snippets`);
+        
+        for (const elem of snippets) {
+          const text = elem.textContent || '';
+          extractEmailsFromText(text);
+        }
+        
+        // Return the found emails as an array
+        return Array.from(results);
+      }, domain.replace(/^www\./, ''));
+      
+      // If we found emails in <em> or other tags, log and filter them
+      if (emailsInEmphasis && emailsInEmphasis.length > 0) {
+        // Filter out search engine error emails and apply domain relevance check
+        const filteredEmails = emailsInEmphasis
+          .filter(email => this.isValidEmail(email))
+          .filter(email => this.emailMatchesDomain(email, domain));
+        
+        if (filteredEmails.length > 0) {
+          logger.info(`Worker ${workerId}: Found ${filteredEmails.length} valid emails in emphasized/highlighted elements: ${filteredEmails.join(', ')}`);
+          
+          // Save source information for each email found
+          filteredEmails.forEach(email => {
+            if (this.lastExtractedEmailSources) {
+              this.lastExtractedEmailSources.set(email.toLowerCase(), 'search result emphasis');
+            }
+          });
+          
+          return filteredEmails;
+        } else {
+          logger.info(`Worker ${workerId}: Found ${emailsInEmphasis.length} emails but all were filtered out as invalid or unrelated to the domain`);
+        }
+      }
+      
+      // If still no emails found, try the full page content
+      logger.info(`Worker ${workerId}: No valid emails found in emphasized elements, checking full page content`);
+      
+      // Get both HTML content and plain text
+      const pageContent = await page.content();
+      const bodyText = await page.evaluate(() => document.body.innerText);
+      
+      // Look for emails in the page content
+      let emails = this.extractEmailsFromText(pageContent, bodyText, domain);
+      
+      // Filter out search engine error emails
+      emails = emails.filter(email => 
+        this.isValidEmail(email) && this.emailMatchesDomain(email, domain)
+      );
+      
+      if (emails.length > 0) {
+        logger.info(`Worker ${workerId}: Found ${emails.length} valid emails in page content: ${emails.join(', ')}`);
+      } else {
+        logger.info(`Worker ${workerId}: No valid emails found in search results for ${domain}`);
+      }
+      
+      return emails;
+    } catch (error) {
+      logger.error(`Worker ${workerId}: Error extracting emails from search results: ${error.message}`);
+      return [];
+    }
+  }
+
+  // Add a new comprehensive email extraction method
+  async extractImprovedEmails(page, url, workerId = 0) {
+    try {
+      logger.info(`Worker ${workerId}: Extracting emails with improved method from ${url}`);
+      const emails = new Set();
+      
+      // 1. First try to get emails from mailto: links (highest confidence)
+      const mailtoEmails = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a[href^="mailto:"]'));
+        return links.map(link => {
+          const email = link.href.replace('mailto:', '').split('?')[0].trim();
+          return email;
+        }).filter(Boolean);
+      }).catch(e => {
+        logger.warn(`Worker ${workerId}: Error extracting mailto links: ${e.message}`);
+        return [];
+      });
+
+      // Add mailto emails to our set
+      mailtoEmails.forEach(email => {
+        if (this.isValidEmail(email)) {
+          emails.add(email);
+          // Track these as high confidence sources
+          if (this.lastExtractedEmailSources) {
+            this.lastExtractedEmailSources.set(email.toLowerCase(), 'mailto link');
+          }
+        }
+      });
+
+      // 2. Extract emails from text content
+      const pageContent = await page.content().catch(e => '');
+      const bodyText = await page.evaluate(() => document.body.innerText).catch(e => '');
+      
+      const textEmails = this.extractEmailsFromText(pageContent, bodyText || '');
+      textEmails.forEach(email => {
+        if (this.isValidEmail(email)) {
+          emails.add(email);
+          // Track source
+          if (this.lastExtractedEmailSources && !this.lastExtractedEmailSources.has(email.toLowerCase())) {
+            this.lastExtractedEmailSources.set(email.toLowerCase(), 'page content');
+          }
+        }
+      });
+
+      // 3. Look for obfuscated emails
+      const obfuscatedEmails = await this.extractObfuscatedEmails(page, workerId);
+      obfuscatedEmails.forEach(email => {
+        if (this.isValidEmail(email)) {
+          emails.add(email);
+          // Track source
+          if (this.lastExtractedEmailSources && !this.lastExtractedEmailSources.has(email.toLowerCase())) {
+            this.lastExtractedEmailSources.set(email.toLowerCase(), 'obfuscated');
+          }
+        }
+      });
+
+      // 4. Extract domain-specific emails if domain is known
+      try {
+        const domain = new URL(url).hostname;
+        if (domain) {
+          const domainEmails = await this.extractDomainSpecificEmails(page, domain);
+          domainEmails.forEach(email => {
+            if (this.isValidEmail(email)) {
+              emails.add(email);
+              // Domain-specific emails are higher confidence
+              if (this.lastExtractedEmailSources) {
+                this.lastExtractedEmailSources.set(email.toLowerCase(), 'domain match');
+              }
+            }
+          });
+        }
+      } catch (e) {
+        // Ignore domain extraction errors
+      }
+
+      // 5. Follow contact links if no emails found
+      if (emails.size === 0) {
+        logger.info(`Worker ${workerId}: No emails found on main page, looking for contact links`);
+        const contactLinks = await this.findContactLinks(page);
+        
+        if (contactLinks.length > 0) {
+          logger.info(`Worker ${workerId}: Found ${contactLinks.length} potential contact links`);
+          // Only follow the first 2 contact links to avoid too much recursion
+          for (const contactLink of contactLinks.slice(0, 2)) {
+            try {
+              // Create a new page to avoid navigation issues
+              const contactPage = await page.context().newPage();
+              logger.info(`Worker ${workerId}: Checking contact link: ${contactLink}`);
+              
+              await contactPage.goto(contactLink, { 
+                waitUntil: 'domcontentloaded',
+                timeout: 20000 
+              });
+              
+              await contactPage.waitForTimeout(1000);
+              
+              // Extract emails from the contact page
+              const contactEmails = await this.extractEmailsWithRetry(contactPage, contactLink);
+              
+              // Add any found emails to our set
+              contactEmails.forEach(email => {
+                if (this.isValidEmail(email)) {
+                  emails.add(email);
+                  if (this.lastExtractedEmailSources && !this.lastExtractedEmailSources.has(email.toLowerCase())) {
+                    this.lastExtractedEmailSources.set(email.toLowerCase(), 'contact page');
+                  }
+                }
+              });
+              
+              // Close the contact page
+              await contactPage.close().catch(() => {});
+              
+              // If we found emails, no need to check more contact links
+              if (emails.size > 0) break;
+              
+            } catch (contactError) {
+              logger.warn(`Worker ${workerId}: Error checking contact link ${contactLink}: ${contactError.message}`);
+              continue;
+            }
+          }
+        }
+      }
+
+      // Return all found unique emails as array
+      const uniqueEmails = Array.from(emails);
+      logger.info(`Worker ${workerId}: Found ${uniqueEmails.length} emails on ${url}`);
+      return uniqueEmails;
+    } catch (error) {
+      logger.error(`Worker ${workerId}: Error in extractImprovedEmails: ${error.message}`);
+      return [];
     }
   }
 
