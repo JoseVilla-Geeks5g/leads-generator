@@ -36,7 +36,8 @@ export async function POST(request) {
             minRating = null,    // NEW: Filter by minimum rating
             hasWebsite = true,   // NEW: Explicit filter for businesses with websites
             state = null,        // NEW: Filter by state
-            city = null          // NEW: Filter by city
+            city = null,         // NEW: Filter by city
+            sortOrder = 'desc'   // NEW: Sort order for created_at (asc or desc)
         } = body;
 
         // Database must be initialized before any operations
@@ -78,7 +79,8 @@ export async function POST(request) {
                     searchTerm,
                     minRating,
                     state,
-                    city
+                    city,
+                    sortOrder // NEW: Pass sort order to the service
                 };
 
                 // Add options to the logger for debugging
@@ -94,7 +96,8 @@ export async function POST(request) {
                     searchTerm: searchTerm || 'none',
                     minRating: minRating || 'none',
                     state: state || 'all',
-                    city: city || 'all'
+                    city: city || 'all',
+                    sortOrder: sortOrder || 'desc'
                 })}`);
 
                 // Start email finder with the real implementation
@@ -130,14 +133,16 @@ export async function POST(request) {
                     searchTerm,
                     minRating,
                     state,
-                    city
+                    city,
+                    sortOrder // NEW: Pass sort order to the service
                 };
 
                 logger.info(`Starting email finder with search term "${searchTerm || 'all'}" and filters: ${JSON.stringify({
                     onlyWithWebsite: filterOptions.onlyWithWebsite,
                     state: state || 'all',
                     city: city || 'all',
-                    limit
+                    limit,
+                    sortOrder: sortOrder || 'desc'
                 })}`);
 
                 // Use the specialized method when search term is provided
@@ -148,7 +153,7 @@ export async function POST(request) {
                     processPromise.catch(err => logger.error(`Error in batch process: ${err.message}`));
                     
                     return NextResponse.json({
-                        message: `Email finder started for search term "${searchTerm}"`,
+                        message: `Email finder started for search term "${searchTerm}" with sort order ${sortOrder || 'desc'}`,
                         queueSize: filterOptions.limit,
                         isRunning: true,
                         options: filterOptions

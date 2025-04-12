@@ -80,6 +80,9 @@ export async function GET() {
       results.success = false;
     }
     
+    // Ensure formatted_phone column exists and is populated
+    await ensureFormattedPhoneColumn();
+    
     logger.info(`Database setup completed with status: ${results.success ? 'SUCCESS' : 'ERRORS'}`);
     return NextResponse.json(results);
   } catch (error) {
@@ -354,6 +357,52 @@ async function ensureScrapingTaskColumns() {
     return true;
   } catch (error) {
     logger.error(`Error ensuring scraping_tasks columns: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Ensure the formatted_phone column exists in business_listings
+ */
+async function ensureFormattedPhoneColumn() {
+  try {
+    // Check if formatted_phone column exists
+    const result = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns 
+        WHERE table_name = 'business_listings' AND column_name = 'formatted_phone'
+      )
+    `);
+    
+    const columnExists = result.rows[0].exists;
+    
+    if (!columnExists) {
+      logger.info('Adding formatted_phone column to business_listings table');
+      await db.query(`ALTER TABLE business_listings ADD COLUMN formatted_phone VARCHAR(20)`);
+      
+      // Create an index for the column
+      logger.info('Creating index on formatted_phone column');
+      await db.query(`CREATE INDEX idx_business_listings_formatted_phone ON business_listings(formatted_phone)`);
+    }
+    
+    // Populate the column with formatted values
+    logger.info('Updating formatted_phone values for existing records');
+    await db.query(`
+      UPDATE business_listings
+      SET formatted_phone = REGEXP_REPLACE(
+        REGEXP_REPLACE(
+          COALESCE(phone, ''),
+          '[^0-9]', '', 'g'
+        ),
+        '^1?', '1', 'g'
+      )
+      WHERE phone IS NOT NULL AND phone != '' AND (formatted_phone IS NULL OR formatted_phone = '')
+    `);
+    
+    logger.info('Formatted phone column setup completed');
+    return true;
+  } catch (error) {
+    logger.error(`Error ensuring formatted_phone column: ${error.message}`);
     throw error;
   }
 }

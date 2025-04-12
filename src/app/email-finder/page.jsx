@@ -23,7 +23,8 @@ export default function EmailFinderPage() {
         maxDepth: 2,         // How deep to crawl on sites
         timeout: 30000,      // 30 seconds timeout per site
         useSearchEngines: true, // NEW: Use search engines as last resort
-        searchEngine: 'google'  // NEW: Default search engine
+        searchEngine: 'google',  // NEW: Default search engine
+        sortOrder: 'desc' // Default sort order
     });
     const [selectedBusinesses, setSelectedBusinesses] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
@@ -793,6 +794,20 @@ export default function EmailFinderPage() {
                                                     </p>
                                                 </div>
                                             )}
+                                        </div>
+
+                                        {/* NEW: Sort Order Option */}
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">Sort Order</label>
+                                            <select
+                                                className="border rounded w-full p-2"
+                                                value={processingOptions.sortOrder}
+                                                onChange={(e) => handleOptionChange('sortOrder', e.target.value)}
+                                            >
+                                                <option value="desc">Newest First</option>
+                                                <option value="asc">Oldest First</option>
+                                            </select>
+                                            <p className="text-xs text-gray-500 mt-1">Sort by created date</p>
                                         </div>
                                     </div>
 

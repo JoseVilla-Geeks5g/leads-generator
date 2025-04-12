@@ -129,6 +129,7 @@ async function initializeTables() {
                 country VARCHAR(100),
                 postal_code VARCHAR(20),
                 phone VARCHAR(50),
+                formatted_phone VARCHAR(20),  /* NEW: column for storing formatted phone numbers */
                 email VARCHAR(255),
                 website VARCHAR(255),
                 domain VARCHAR(255),
@@ -239,6 +240,34 @@ async function initializeTables() {
             await pool.query(`ALTER TABLE scraping_tasks ADD COLUMN keywords TEXT DEFAULT ''`);
         }
 
+        //? Check for formatted_phone column in business_listings and add it if it doesn't exist
+        const formattedPhoneExists = await checkColumnExists('business_listings', 'formatted_phone');
+        if (!formattedPhoneExists) {
+            console.log('Adding formatted_phone column to business_listings table');
+            await pool.query(`ALTER TABLE business_listings ADD COLUMN formatted_phone VARCHAR(20)`);
+            
+            // Create an index for the new column
+            const indexExists = await checkIndexExists('idx_business_listings_formatted_phone');
+            if (!indexExists) {
+                console.log('Creating index on formatted_phone column');
+                await pool.query(`CREATE INDEX idx_business_listings_formatted_phone ON business_listings(formatted_phone)`);
+            }
+            
+            // Populate the column with formatted values from the phone column
+            console.log('Populating formatted_phone column with cleaned phone numbers');
+            await pool.query(`
+                UPDATE business_listings
+                SET formatted_phone = REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        COALESCE(phone, ''),
+                        '[^0-9]', '', 'g'
+                    ),
+                    '^1?', '1', 'g'
+                )
+                WHERE phone IS NOT NULL AND phone != ''
+            `);
+        }
+
         //=================================
         // Create indexes for better performance
         //=================================
@@ -252,7 +281,8 @@ async function initializeTables() {
             { name: 'idx_business_listings_name', table: 'business_listings', column: 'name' },
             { name: 'idx_business_listings_domain', table: 'business_listings', column: 'domain' },
             { name: 'idx_business_listings_city', table: 'business_listings', column: 'city' },
-            { name: 'idx_business_listings_state', table: 'business_listings', column: 'state' }
+            { name: 'idx_business_listings_state', table: 'business_listings', column: 'state' },
+            { name: 'idx_business_listings_formatted_phone', table: 'business_listings', column: 'formatted_phone' }
         ];
 
         for (const index of indexes) {

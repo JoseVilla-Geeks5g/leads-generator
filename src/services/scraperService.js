@@ -123,15 +123,52 @@ async function processEmailBatch(businesses, options = {}) {
 
 // Process all businesses
 async function processAllPendingBusinesses(options = {}) {
-  // ...existing code...
-  
-  // Make sure all functions that call emailFinder pass the business ID correctly
-  
-  return await emailFinder.processAllPendingBusinesses({
-    ...options,
-    // Ensure these flags are set
-    saveToDatabase: true
-  });
+  try {
+    // ...existing code...
+    
+    // Build query with proper parameters and sorting
+    const conditions = [];
+    const params = [];
+
+    // Define website condition based on options
+    const websiteCondition = options.onlyWithWebsite 
+      ? `website IS NOT NULL AND website != '' AND website != 'null' AND website NOT LIKE 'http://null%'` 
+      : `true`;
+    
+    conditions.push(`${websiteCondition} AND (email IS NULL OR email = '' OR email = '[null]')`);
+
+    // Add search term filter
+    if (options.searchTerm) {
+      params.push(options.searchTerm);
+      conditions.push(`search_term = $${params.length}`);
+    }
+
+    // Add other filters (state, city, etc)
+    // ...existing code...
+
+    // Set sort order (default to DESC if not specified)
+    const sortOrder = options.sortOrder === 'asc' ? 'ASC' : 'DESC';
+    
+    // Add limit parameter
+    params.push(options.limit || 1000);
+    
+    // Build final query with sorting
+    const query = `
+      SELECT id, name, website, domain
+      FROM business_listings
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY created_at ${sortOrder}
+      LIMIT $${params.length}
+    `;
+    
+    logger.info(`Querying businesses with sort order ${sortOrder}: ${query.replace(/\s+/g, ' ')}`);
+    
+    // Execute query and process businesses
+    // ...existing code...
+  } catch (error) {
+    logger.error(`Error processing pending businesses: ${error.message}`);
+    return 0;
+  }
 }
 
 // Process specific businesses

@@ -637,6 +637,83 @@ class Database {
             {code: 'WY', name: 'Wyoming'}
         ];
     }
+
+    /**
+     * Format a phone number to contain only digits with leading '1' for US/Canada
+     * @param {string} phone - Phone number to format
+     * @returns {string|null} Formatted phone number or null if input is invalid
+     */
+    formatPhoneNumber(phone) {
+        if (!phone) return null;
+        
+        try {
+            // Remove all non-digit characters
+            let formatted = phone.replace(/[^0-9]/g, '');
+            
+            // Ensure US/Canada numbers have leading 1
+            if (formatted.length === 10) {
+                formatted = '1' + formatted;
+            } else if (formatted.length > 10 && !formatted.startsWith('1')) {
+                // Add leading 1 if missing for international numbers
+                formatted = '1' + formatted;
+            }
+            
+            return formatted;
+        } catch (error) {
+            logger.warn(`Error formatting phone number: ${error.message}`);
+            return null;
+        }
+    }
+    
+    /**
+     * Create or update a business listing with automatic phone formatting
+     * @param {Object} data - Business data
+     * @returns {Promise<Object>} - Created or updated business
+     */
+    async saveBusinessListing(data) {
+        try {
+            // Format the phone number if present
+            if (data.phone) {
+                data.formatted_phone = this.formatPhoneNumber(data.phone);
+            }
+            
+            // Determine if this is an update or insert
+            if (data.id) {
+                // Update existing record
+                const result = await this.query(
+                    `UPDATE business_listings 
+                    SET name = $1, address = $2, city = $3, state = $4,
+                        phone = $5, formatted_phone = $6, email = $7, website = $8,
+                        updated_at = NOW()
+                    WHERE id = $9
+                    RETURNING *`,
+                    [
+                        data.name, data.address, data.city, data.state,
+                        data.phone, data.formatted_phone, data.email, data.website,
+                        data.id
+                    ]
+                );
+                return result.rows[0];
+            } else {
+                // Insert new record
+                const result = await this.query(
+                    `INSERT INTO business_listings
+                    (name, address, city, state, phone, formatted_phone, email, website, search_term, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+                    RETURNING *`,
+                    [
+                        data.name, data.address, data.city, data.state,
+                        data.phone, data.formatted_phone, data.email, data.website, 
+                        data.search_term || 'manual'
+                    ]
+                );
+                return result.rows[0];
+            }
+        } catch (error) {
+            logger.error(`Error saving business listing: ${error.message}`);
+            throw error;
+        }
+    }
 }
 
 // Create a singleton instance
