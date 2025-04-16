@@ -218,20 +218,71 @@ class GoogleMapsScraper {
                 }
               }
               
-              // Extract address with better selector
+              // Extract address with improved selector targeting the structure shown in the HTML example
               let address = 'No address available';
-              // Try multiple potential address selectors
-              const addressSelectors = [
-                '.W4Efsd:nth-child(2) > div.W4Efsd > span.W4Efsd:nth-child(1)',
-                '[data-tooltip="Copy address"]',
-                '.W4Efsd span:not(.MW4etd):not(.UY7F9)'
-              ];
               
-              for (const selector of addressSelectors) {
-                const addressElement = element.querySelector(selector);
-                if (addressElement && addressElement.textContent.trim()) {
-                  address = addressElement.textContent.trim();
+              // First try to find address after the dot separator (·)
+              const addressContainers = element.querySelectorAll('.W4Efsd');
+              for (const container of addressContainers) {
+                // Try to find spans containing the middle dot character
+                const spans = container.querySelectorAll('span');
+                for (let i = 0; i < spans.length; i++) {
+                  const span = spans[i];
+                  if (span.textContent.includes('·')) {
+                    // Check if there's a next sibling span that might contain the address
+                    const nextSpan = spans[i+1];
+                    if (nextSpan) {
+                      const potentialAddress = nextSpan.textContent.trim();
+                      // Check if it looks like an address (contains numbers, not too short)
+                      if (potentialAddress.length > 3 && /\d/.test(potentialAddress)) {
+                        address = potentialAddress;
+                        break;
+                      }
+                    }
+                  }
+                }
+                
+                // If we found an address, break out of the container loop
+                if (address !== 'No address available') break;
+                
+                // Alternative approach: look for text patterns in the container
+                const text = container.textContent;
+                const match = text.match(/·\s*([^·]+)/);
+                if (match && !text.includes("Abierto") && !text.includes("Cierra")) {
+                  address = match[1].trim();
                   break;
+                }
+              }
+              
+              // If address is still not found, try secondary approaches
+              if (address === 'No address available') {
+                // Try selectors found in sample HTML
+                const addressSelectors = [
+                  '.W4Efsd span:not(.MW4etd):not(.UY7F9)',
+                  '[data-tooltip="Copy address"]',
+                  '.W4Efsd:nth-child(2) > div.W4Efsd > span:nth-child(2)'
+                ];
+                
+                for (const selector of addressSelectors) {
+                  const addressElement = element.querySelector(selector);
+                  if (addressElement && addressElement.textContent.trim()) {
+                    address = addressElement.textContent.trim();
+                    break;
+                  }
+                }
+                
+                // Last attempt: parse all span contents to find address pattern
+                if (address === 'No address available') {
+                  const allSpans = element.querySelectorAll('span');
+                  for (const span of allSpans) {
+                    const text = span.textContent.trim();
+                    // Look for text that might be an address (contains numbers and isn't too short)
+                    if (text.length > 5 && /\d+/.test(text) && !/^[0-9+()]+$/.test(text) && 
+                        !text.includes("estrellas") && !text.includes("opiniones")) {
+                      address = text;
+                      break;
+                    }
+                  }
                 }
               }
               

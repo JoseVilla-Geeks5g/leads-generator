@@ -867,33 +867,11 @@ class ScraperService {
                     // Handle potential null values and truncate data
                     const processedBusiness = this.processBusinessData(business, city, state, category, taskId);
                     
-                    // Insert into business_listings table
-                    await db.query(`
-                        INSERT INTO business_listings (
-                            name, address, city, state, country, postal_code, phone, website, domain, 
-                            rating, search_term, search_date, task_id, notes, created_at
-                        ) VALUES (
-                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
-                        )
-                        ON CONFLICT (name, search_term) DO NOTHING
-                    `, [
-                        processedBusiness.name,
-                        processedBusiness.address,
-                        processedBusiness.city,
-                        processedBusiness.state,
-                        'United States',
-                        processedBusiness.postalCode,
-                        processedBusiness.phone,
-                        processedBusiness.website,
-                        processedBusiness.domain,
-                        processedBusiness.rating,
-                        processedBusiness.category,
-                        new Date().toISOString(),
-                        taskId,
-                        processedBusiness.notes
-                    ]);
-                    
-                    savedCount++;
+                    // Insert into business_listings table using our new safe method
+                    const saved = await this.saveScrapedBusiness(processedBusiness, taskId);
+                    if (saved) {
+                        savedCount++;
+                    }
                 } catch (error) {
                     logger.error(`Error saving business data: ${error.message}`);
                 }
@@ -969,6 +947,61 @@ class ScraperService {
                 category: category,
                 notes: 'Error processing data'
             };
+        }
+    }
+
+    /**
+     * Save scraped business to database
+     * @param {Object} processedBusiness - The processed business data
+     * @param {string} taskId - The task ID
+     * @returns {Promise<boolean>} Success or failure
+     */
+    async saveScrapedBusiness(processedBusiness, taskId) {
+        try {
+            // First check if business with same name and search term already exists
+            const existingBusiness = await db.getOne(`
+                SELECT id FROM business_listings 
+                WHERE name = $1 AND search_term = $2
+            `, [
+                processedBusiness.name,
+                processedBusiness.category
+            ]);
+            
+            if (existingBusiness) {
+                // Business already exists, skip insertion
+                logger.debug(`Business already exists: ${processedBusiness.name}`);
+                return true;
+            }
+            
+            // Insert new business record
+            await db.query(`
+                INSERT INTO business_listings (
+                    name, address, city, state, country, postal_code, phone, website, domain, 
+                    rating, search_term, search_date, task_id, notes, created_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+                )
+            `, [
+                processedBusiness.name,
+                processedBusiness.address,
+                processedBusiness.city,
+                processedBusiness.state,
+                'United States',
+                processedBusiness.postalCode,
+                processedBusiness.phone,
+                processedBusiness.website,
+                processedBusiness.domain,
+                processedBusiness.rating,
+                processedBusiness.category,
+                new Date().toISOString(),
+                taskId,
+                processedBusiness.notes
+            ]);
+            
+            return true;
+        } catch (error) {
+            logger.error(`Error saving business data: ${error.message}`);
+            return false;
         }
     }
 

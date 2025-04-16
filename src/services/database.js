@@ -377,16 +377,22 @@ class Database {
             // First ensure the city_data table exists
             await this.ensureCityDataTable();
             
+            // For California, don't apply a limit - get all cities
+            const isCA = state.toUpperCase() === 'CA';
+            
             // Try to get cities from the city_data table
             const citiesQuery = `
                 SELECT city, population 
                 FROM city_data 
                 WHERE state_code = $1 
                 ORDER BY population DESC 
-                LIMIT $2
+                ${isCA ? '' : 'LIMIT $2'}
             `;
             
-            const citiesResult = await this.getMany(citiesQuery, [state, limit]);
+            // Use different parameter count based on whether we're limiting or not
+            const citiesResult = isCA ? 
+                await this.getMany(citiesQuery, [state]) : 
+                await this.getMany(citiesQuery, [state, limit]);
             
             // If we have cities in the database, return them
             if (citiesResult && citiesResult.length > 0) {
@@ -395,11 +401,13 @@ class Database {
             
             // Otherwise return hardcoded top cities
             logger.info(`No cities found in database for ${state}, using hardcoded data`);
-            return this.getHardcodedTopCities(state, limit);
+            
+            // For California, get all hardcoded cities without limit
+            return this.getHardcodedTopCities(state, isCA ? 1000 : limit);
         } catch (error) {
             logger.error(`Error getting top cities for ${state}: ${error.message}`);
             // Fallback to hardcoded cities
-            return this.getHardcodedTopCities(state, limit);
+            return this.getHardcodedTopCities(state, state.toUpperCase() === 'CA' ? 1000 : limit);
         }
     }
     
