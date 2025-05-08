@@ -151,7 +151,7 @@ export async function POST(request) {
             );
         }
 
-        const { states, searchTerm, wait, maxResults, topCitiesPerState = 10 } = body;
+        const { states, searchTerm, wait, maxResults, topCitiesPerState = 50 } = body;
 
         // Validate required parameters
         if (!searchTerm) {

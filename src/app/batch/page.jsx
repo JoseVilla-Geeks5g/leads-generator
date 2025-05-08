@@ -363,7 +363,7 @@ export default function BatchPage() {
                     states: selectedStates,
                     wait: waitTime * 1000,
                     maxResults,
-                    topCitiesPerState: 10 // Always use top 10 cities per state
+                    topCitiesPerState: 50 // Always use top 10 cities per state
                 })
             });
 
