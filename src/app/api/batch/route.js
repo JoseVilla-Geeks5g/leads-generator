@@ -170,16 +170,13 @@ export async function POST(request) {
             );
         }
 
-        // Check if a batch is already running
+        // Log current batch status (but allow multiple batches to run)
         const batchStatus = scraperService.getBatchStatus();
         logger.info(`Current batch status: ${JSON.stringify(batchStatus)}`);
-        
+
+        // Note: We now allow multiple batches to run concurrently
         if (batchStatus.isRunning) {
-            logger.error('A batch operation is already running');
-            return NextResponse.json(
-                { error: 'A batch operation is already running' },
-                { status: 400 }
-            );
+            logger.info('A batch is already running, but allowing new batch to start');
         }
 
         // Create a batch ID

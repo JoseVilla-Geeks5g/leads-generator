@@ -504,7 +504,7 @@ export default function BatchPage() {
                             </div>
                         )}
 
-                        {isRunning && activeBatch ? (
+                        {isRunning && activeBatch && (
                             <div className="card p-6 mb-6">
                                 <h2 className="text-xl font-semibold mb-5 flex items-center">
                                     <span className="material-icons mr-3 text-primary animate-pulse">pending</span>
@@ -552,8 +552,9 @@ export default function BatchPage() {
                                     </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="card p-6 mb-6">
+                        )}
+
+                        <div className="card p-6 mb-6">
                                 <h2 className="text-xl font-semibold mb-5 flex items-center">
                                     <span className="material-icons mr-3 text-primary">batch_prediction</span>
                                     Create State-Based Batch
@@ -721,7 +722,6 @@ export default function BatchPage() {
                                     </div>
                                 </div>
                             </div>
-                        )}
 
                         <div className="card p-6">
                             <h2 className="text-xl font-semibold mb-5 flex items-center">
