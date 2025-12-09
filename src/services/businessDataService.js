@@ -264,16 +264,12 @@ async function createSimulatedRandomCategoryLeads(taskId, category, location, co
     }
 }
 
-export {
+// Create the service object
+const businessDataService = {
     processBusinessData,
     saveScrapedBusiness,
     createSimulatedBusinesses,
     createSimulatedRandomCategoryLeads
 };
 
-export default {
-    processBusinessData,
-    saveScrapedBusiness,
-    createSimulatedBusinesses,
-    createSimulatedRandomCategoryLeads
-};
+export default businessDataService;

@@ -6,7 +6,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import db from './database';
 import logger from './logger';
-import { ensureBrowser, scrapeBusinessesFromGoogleMaps } from './taskService';
+import taskService from './taskService';
 
 // Batch state tracking
 const batchState = {
@@ -70,7 +70,7 @@ async function startBatch(states = null, options = {}) {
 
     try {
         logger.info(`Starting batch for states: ${JSON.stringify(states)}`);
-        await ensureBrowser();
+        await taskService.ensureBrowser();
 
         const batchId = options.batchId || uuidv4();
         const searchTerm = options.searchTerm || 'business';
@@ -210,7 +210,7 @@ async function processBatch(batchId, states, options) {
                     ]);
 
                     logger.info(`Actually scraping Google Maps for: ${searchTerm}`);
-                    const businesses = await scrapeBusinessesFromGoogleMaps(taskId, options.searchTerm || 'Digital Marketing Agency', `${city}, ${state}`);
+                    const businesses = await taskService.scrapeBusinessesFromGoogleMaps(taskId, options.searchTerm || 'Digital Marketing Agency', `${city}, ${state}`);
 
                     await db.query(`
                         UPDATE scraping_tasks
@@ -350,7 +350,8 @@ async function stopBatch(batchIdToStop = null) {
     };
 }
 
-export {
+// Create the service object
+const batchService = {
     batchState,
     getBatchStatus,
     getAllRunningBatches,
@@ -359,11 +360,4 @@ export {
     stopBatch
 };
 
-export default {
-    batchState,
-    getBatchStatus,
-    getAllRunningBatches,
-    startBatch,
-    processBatch,
-    stopBatch
-};
+export default batchService;

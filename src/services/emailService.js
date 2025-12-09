@@ -1,9 +1,16 @@
 /**
+ * Email Service Module
+ * Handles all email discovery and processing functionality
+ */
 
 import db from './database';
 import logger from './logger';
 import emailFinder from '../../emailFinder';
 
+/**
+ * Verify that emailFinder is properly initialized
+ * @returns {boolean} Whether emailFinder is working
+ */
 function verifyEmailFinder() {
     if (!emailFinder) {
         logger.error('Email finder module is not properly imported');
@@ -18,6 +25,12 @@ function verifyEmailFinder() {
     return true;
 }
 
+/**
+ * Safely find email using emailFinder
+ * @param {string} website - Website to search
+ * @param {Object} options - Options for email finder
+ * @returns {Promise<string|null>} Found email or null
+ */
 async function findEmailSafe(website, options = {}) {
     if (!verifyEmailFinder()) {
         logger.error(`Cannot find email for ${website}: Email finder not properly initialized`);
@@ -66,7 +79,7 @@ async function findEmailForBusiness(business) {
  */
 async function processEmailBatch(businesses, options = {}) {
     const results = [];
-    let concurrency = options.concurrency || 3;
+    const concurrency = options.concurrency || 3;
     let currentRunning = 0;
     let completed = 0;
 
@@ -148,7 +161,6 @@ async function processAllPendingBusinesses(options = {}) {
 
         logger.info(`Querying businesses with sort order ${sortOrder}: ${query.replace(/\s+/g, ' ')}`);
 
-        // Execute query and process businesses
         const businesses = await db.getMany(query, params);
 
         if (!businesses || businesses.length === 0) {
@@ -240,7 +252,8 @@ async function processEmailForBusiness(business) {
     } : null;
 }
 
-export {
+// Create the service object
+const emailService = {
     verifyEmailFinder,
     findEmailSafe,
     findEmailForBusiness,
@@ -252,14 +265,4 @@ export {
     processEmailForBusiness
 };
 
-export default {
-    verifyEmailFinder,
-    findEmailSafe,
-    findEmailForBusiness,
-    processEmailBatch,
-    processAllPendingBusinesses,
-    processBusinesses,
-    getEmailFinderStatus,
-    stopEmailFinder,
-    processEmailForBusiness
-};
+export default emailService;

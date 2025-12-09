@@ -61,8 +61,9 @@ async function getStatistics() {
     }
 }
 
-export { getStatistics };
-
-export default {
+// Create the service object
+const statisticsService = {
     getStatistics
 };
+
+export default statisticsService;

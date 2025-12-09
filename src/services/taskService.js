@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import db from './database';
 import logger from './logger';
 import googleMapsScraper from './googleMapsScraper';
-import { saveScrapedBusiness, processBusinessData } from './businessDataService';
+import businessDataService from './businessDataService';
 
 // Task tracking state
 const state = {
@@ -670,8 +670,8 @@ async function scrapeBusinessesFromGoogleMaps(taskId, category, location) {
         let savedCount = 0;
         for (const business of businesses) {
             try {
-                const processedBusiness = processBusinessData(business, city, stateCode, category, taskId);
-                const saved = await saveScrapedBusiness(processedBusiness, taskId);
+                const processedBusiness = businessDataService.processBusinessData(business, city, stateCode, category, taskId);
+                const saved = await businessDataService.saveScrapedBusiness(processedBusiness, taskId);
                 if (saved) {
                     savedCount++;
                 }
@@ -742,7 +742,8 @@ async function clearMockBusinesses() {
     }
 }
 
-export {
+// Create the service object
+const taskService = {
     state,
     setAutoProcessing,
     isAutoProcessingEnabled,
@@ -763,23 +764,4 @@ export {
     clearMockBusinesses
 };
 
-export default {
-    state,
-    setAutoProcessing,
-    isAutoProcessingEnabled,
-    setMockDataGeneration,
-    isMockDataGenerationEnabled,
-    triggerTaskProcessing,
-    ensureBrowser,
-    ensureRequiredColumns,
-    processTaskQueue,
-    addTask,
-    updateTaskStatus,
-    updateTaskCategoryProgress,
-    getTaskStatus,
-    getAllTasks,
-    runRandomCategoryTask,
-    scrapeBusinessesFromGoogleMaps,
-    runTask,
-    clearMockBusinesses
-};
+export default taskService;
